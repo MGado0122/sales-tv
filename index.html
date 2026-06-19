@@ -1321,10 +1321,11 @@ function updateClock() {
 setInterval(updateClock, 1000); updateClock();
 
 // ─── HELPERS ─────────────────────────────────────────────
-function todayKey() { return new Date().toISOString().slice(0,10); }
+function _localYMD(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayKey() { return _localYMD(new Date()); }   // local calendar date, rolls at local midnight
 function weekKey(date) {
   const d = new Date(date); d.setHours(0,0,0,0);
-  d.setDate(d.getDate()-d.getDay()); return d.toISOString().slice(0,10);
+  d.setDate(d.getDate()-d.getDay()); return _localYMD(d);
 }
 function isToday(e) { return e.day === todayKey(); }
 function isThisWeek(e) { return e.week === weekKey(new Date()); }
@@ -1718,10 +1719,17 @@ setInterval(function(){ try{ if(entries.length){ openSummary(); setTimeout(close
 // ─── DATA LAYER (Google Sheets via Apps Script Web App) ──
 const TEAM_NUM = { whale:'1', lion:'2', tiger:'3', ali:'4', meram:'5', sayeda:'6' };
 function parseRow(r){
-  const raw = r['Date'];
-  let d = new Date(raw);
-  if (isNaN(d.getTime()) && raw) d = new Date(String(raw).replace(' ','T'));
-  const ts = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  const raw = String(r['Date']||'').trim();
+  let d;
+  let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);            // YYYY-MM-DD (as local calendar date)
+  if (m) { d = new Date(+m[1], +m[2]-1, +m[3]); }
+  else {
+    m = raw.match(/^(\d{1,2})[\/](\d{1,2})[\/](\d{4})/);   // M/D/YYYY (US display)
+    if (m) { d = new Date(+m[3], +m[1]-1, +m[2]); }
+    else { d = new Date(raw); }
+  }
+  if (isNaN(d.getTime())) d = new Date();
+  const ts = d.toISOString();
   // Team column accepts a number ("1".."6") OR a name ("Whale".."Sayeda")
   let team = String(r['Team']||'').trim();
   if (/[a-z]/i.test(team)) team = TEAM_NUM[team.toLowerCase()] || team;
@@ -1734,7 +1742,7 @@ function parseRow(r){
     type:        r['Shipment Type']||'',
     notes:       r['Notes']||'',
     timestamp:   ts,
-    day:         ts.slice(0,10),
+    day:         _localYMD(d),
     week:        weekKey(ts)
   };
 }
