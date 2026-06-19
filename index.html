@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  var PASS = "meils2026";   // <-- change this to update the dashboard password
+  try { if (sessionStorage.getItem('mtv_ok') === '1') return; } catch(e){}
+  var ok = false;
+  for (var i=0; i<3 && !ok; i++){
+    var v = prompt("Enter dashboard password:");
+    if (v === null) break;
+    if (v === PASS){ ok = true; try{ sessionStorage.setItem('mtv_ok','1'); }catch(e){} }
+  }
+  if (!ok){ document.documentElement.innerHTML = '<body style="background:#0d1117;color:#8b949e;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">Access denied. Reload to try again.</body>'; throw new Error('locked'); }
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sales Command Center — Logistics Co.</title>
