@@ -539,6 +539,7 @@
   </div>
   <div class="header-right">
     <span id="clock"></span>
+    <button onclick="openSummary()" id="summaryBtn" title="Show Summary" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">📊</button>
     <button onclick="toggleSound()" id="soundBtn" title="Toggle Sound" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">🔊</button>
     <button onclick="toggleFullView()" id="fullViewBtn" title="Full View" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid #0a8f8f;color:#0cbfbf;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">⛶</button>
   </div>
@@ -792,6 +793,50 @@
   </div>
 
 
+
+  <!-- SUMMARY OVERLAY -->
+  <div id="summary-overlay" onclick="handleSummaryClick(event)">
+    <div class="summary-card">
+      <button class="summary-close" onclick="closeSummary()" title="Close">✕</button>
+      <div class="summary-heading">
+        <h2>📊 <span>Daily</span> Summary</h2>
+        <div class="summary-date" id="sum-date"></div>
+      </div>
+      <div class="summary-star-section">
+        <div class="summary-star-emoji">⭐</div>
+        <div>
+          <div class="sum-label">Star of the Day</div>
+          <div class="summary-star-name" id="sum-star-name">—</div>
+          <div class="summary-star-sub"  id="sum-star-sub"></div>
+        </div>
+      </div>
+      <div class="summary-team-section team-default-bg" id="sum-team-section">
+        <div class="summary-animal-wrap"><span class="summary-animal-emoji" id="sum-animal">🏆</span></div>
+        <div>
+          <div class="summary-team-label">Winning Team — Today</div>
+          <div class="summary-team-name" id="sum-team-name">—</div>
+          <div class="summary-team-sub"  id="sum-team-sub"></div>
+        </div>
+      </div>
+      <div class="summary-opp-section">
+        <div class="opp-title">💡 Top 3 R&Ds — Opportunities Today</div>
+        <div id="sum-opp-top"></div>
+        <div class="sum-opp-star" id="sum-opp-star"></div>
+      </div>
+      <div class="summary-opp-section" style="border-color:#1f6f78;background:linear-gradient(135deg,#0a2226,#0d2d33);">
+        <div class="opp-title" style="color:#5fd6df;">🌍 Overseas — Tiger (under Sawsan)</div>
+        <div id="sum-overseas"></div>
+      </div>
+      <div class="summary-metrics-heading">Today's Numbers</div>
+      <div class="summary-metrics-grid">
+        <div class="summary-metric sm1"><div class="smv" id="sum-rfq">0</div><div class="sml">RFQs</div></div>
+        <div class="summary-metric sm2"><div class="smv" id="sum-confirmed">0</div><div class="sml">Confirmed</div></div>
+        <div class="summary-metric sm3"><div class="smv" id="sum-cancelled">0</div><div class="sml">Cancelled</div></div>
+        <div class="summary-metric sm4"><div class="smv" id="sum-opp">0</div><div class="sml">Opportunities</div></div>
+        <div class="summary-metric sm5"><div class="smv" id="sum-mega">0</div><div class="sml">Mega Deals</div></div>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -1584,6 +1629,92 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
+// ─── SUMMARY ─────────────────────────────────────────────
+const ANIMAL_MAP = { whale:'🐋', lion:'🦁', tiger:'🐯', ali:'🏎️', meram:'🐱', sayeda:'💰' };
+const TEAM_BG_MAP = { whale:'team-whale-bg', lion:'team-lion-bg', tiger:'team-tiger-bg', ali:'team-ali-bg', meram:'team-meram-bg', sayeda:'team-sayeda-bg' };
+
+function openSummary(){
+  const names = getTeamNames();
+  const today = entries.filter(isToday);
+  const confirmedToday = today.filter(e=>e.status==='confirmed');
+  const megaToday = today.filter(e=>e.status==='mega');
+  const winToday = confirmedToday.concat(megaToday);
+
+  document.getElementById('sum-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Star of the day (confirmed + mega)
+  const personMap = {};
+  winToday.forEach(e=>{ if(!personMap[e.salesperson]) personMap[e.salesperson]={count:0,team:e.team}; personMap[e.salesperson].count++; });
+  const people = Object.entries(personMap);
+  if (people.length){
+    const star = people.sort((a,b)=>b[1].count-a[1].count)[0];
+    document.getElementById('sum-star-name').textContent = star[0];
+    document.getElementById('sum-star-sub').textContent  = `${star[1].count} confirmed shipment${star[1].count!==1?'s':''} today · ${names[parseInt(star[1].team)-1]||''}`;
+  } else {
+    document.getElementById('sum-star-name').textContent = 'No confirmed shipments yet';
+    document.getElementById('sum-star-sub').textContent  = '';
+  }
+
+  // Winning team (today, overseas rolls into Tiger)
+  const tScores = [1,2,3,4,5,6].map(t=>({ t, name:names[t-1], count: winToday.filter(e=>effTeam(e)==t).length }));
+  const top = tScores.reduce((a,b)=>b.count>a.count?b:a);
+  const teamSection = document.getElementById('sum-team-section');
+  teamSection.className = 'summary-team-section';
+  if (top.count>0){
+    const tKey = (top.name||'').toLowerCase().trim();
+    teamSection.classList.add(TEAM_BG_MAP[tKey] || 'team-default-bg');
+    document.getElementById('sum-animal').textContent    = ANIMAL_MAP[tKey] || '🏆';
+    document.getElementById('sum-team-name').textContent = top.name;
+    document.getElementById('sum-team-sub').textContent  = `${top.count} confirmed shipment${top.count!==1?'s':''} today`;
+  } else {
+    teamSection.classList.add('team-default-bg');
+    document.getElementById('sum-animal').textContent    = '🏆';
+    document.getElementById('sum-team-name').textContent = 'No data yet';
+    document.getElementById('sum-team-sub').textContent  = 'Add confirmed shipments to see the winner';
+  }
+
+  // Top 3 R&Ds by opportunities today
+  const oppToday = today.filter(e=>e.status==='opportunity');
+  const medals = ['🥇','🥈','🥉'];
+  const oppPerson = {};
+  oppToday.forEach(e=>{ if(!oppPerson[e.salesperson]) oppPerson[e.salesperson]={count:0,team:e.team}; oppPerson[e.salesperson].count++; });
+  const topRnD = Object.entries(oppPerson).sort((a,b)=>b[1].count-a[1].count).slice(0,3);
+  const oppTopEl = document.getElementById('sum-opp-top');
+  if (topRnD.length){
+    oppTopEl.innerHTML = topRnD.map((p,i)=>{
+      const emoji = ANIMAL_MAP[(names[parseInt(p[1].team)-1]||'').toLowerCase().trim()] || '💡';
+      return `<div class="opp-rank-row"><span class="opp-medal">${medals[i]}</span><span class="opp-team">${esc(p[0])}</span><span class="opp-emoji">${emoji}</span><span class="opp-count">${p[1].count} opp${p[1].count!==1?'s':''}</span></div>`;
+    }).join('');
+  } else { oppTopEl.innerHTML = '<div class="opp-empty">No opportunities yet today</div>'; }
+  const oppStarEl = document.getElementById('sum-opp-star');
+  oppStarEl.innerHTML = topRnD.length ? `🌟 <b>${esc(topRnD[0][0])}</b> did a great job — ${topRnD[0][1].count} opportunit${topRnD[0][1].count!==1?'ies':'y'} today! (${esc(names[parseInt(topRnD[0][1].team)-1]||'')})` : '';
+
+  // Overseas (today)
+  const ovToday = confirmedToday.filter(e=>isOverseas(e.salesperson));
+  const ovBy = {}; ovToday.forEach(e=>{ ovBy[e.salesperson]=(ovBy[e.salesperson]||0)+1; });
+  let ovHtml = `<div class="opp-rank-row"><span class="opp-team">Total confirmed today</span><span class="opp-count">${ovToday.length}</span></div>`;
+  Object.entries(ovBy).sort((a,b)=>b[1]-a[1]).forEach(([n,c])=>{ ovHtml += `<div class="opp-rank-row"><span class="opp-team">${esc(n)}</span><span class="opp-count">${c} confirmed</span></div>`; });
+  if(!ovToday.length) ovHtml += '<div class="opp-empty">No overseas confirmations today</div>';
+  document.getElementById('sum-overseas').innerHTML = ovHtml;
+
+  // Today's numbers (from sheet data)
+  document.getElementById('sum-rfq').textContent       = today.filter(e=>e.status==='rfq').length;
+  document.getElementById('sum-confirmed').textContent = winToday.length;
+  document.getElementById('sum-cancelled').textContent = today.filter(e=>e.status==='cancelled').length;
+  document.getElementById('sum-opp').textContent       = entries.filter(e=>e.status==='opportunity').length;
+  document.getElementById('sum-mega').textContent      = entries.filter(e=>e.status==='mega').length;
+
+  document.getElementById('summary-overlay').classList.add('active');
+}
+function closeSummary(){
+  const ov = document.getElementById('summary-overlay');
+  ov.style.opacity='0'; ov.style.transition='opacity 0.25s';
+  setTimeout(()=>{ ov.classList.remove('active'); ov.style.opacity=''; ov.style.transition=''; },250);
+}
+function handleSummaryClick(e){ if(e.target === document.getElementById('summary-overlay')) closeSummary(); }
+// Auto-rotate: pop the summary every 4 min for ~25s (hands-off TV)
+setInterval(function(){ try{ if(entries.length){ openSummary(); setTimeout(closeSummary, 25000); } }catch(e){} }, 4*60*1000);
+
 // ─── DATA LAYER (Google Sheets via Apps Script Web App) ──
 function parseRow(r){
   const raw = r['Date'];
@@ -1648,7 +1779,7 @@ function celebrate(entry){
 // ─── INIT ────────────────────────────────────────────────
 renderAll();                       // paint empty shell immediately
 fetchData();                       // first pull
-setInterval(fetchData, 5*60*1000); // auto-refresh every 5 minutes
+setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
 </script>
 <div id="mtv-gate" style="position:fixed;inset:0;z-index:999999;background:#0d1117;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;">
   <div style="text-align:center;color:#e6edf3;">
