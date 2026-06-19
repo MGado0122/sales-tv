@@ -1716,17 +1716,21 @@ function handleSummaryClick(e){ if(e.target === document.getElementById('summary
 setInterval(function(){ try{ if(entries.length){ openSummary(); setTimeout(closeSummary, 25000); } }catch(e){} }, 4*60*1000);
 
 // ─── DATA LAYER (Google Sheets via Apps Script Web App) ──
+const TEAM_NUM = { whale:'1', lion:'2', tiger:'3', ali:'4', meram:'5', sayeda:'6' };
 function parseRow(r){
   const raw = r['Date'];
   let d = new Date(raw);
   if (isNaN(d.getTime()) && raw) d = new Date(String(raw).replace(' ','T'));
   const ts = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  // Team column accepts a number ("1".."6") OR a name ("Whale".."Sayeda")
+  let team = String(r['Team']||'').trim();
+  if (/[a-z]/i.test(team)) team = TEAM_NUM[team.toLowerCase()] || team;
   return {
     status:      String(r['Status']||'').trim().toLowerCase(),
     client:      r['Client']||'',
     companyType: r['Company Type']||'',
     salesperson: r['Salesperson']||'',
-    team:        String(r['Team']||'').trim(),
+    team:        team,
     type:        r['Shipment Type']||'',
     notes:       r['Notes']||'',
     timestamp:   ts,
