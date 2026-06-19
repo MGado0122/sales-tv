@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-(function(){
-  var PASS = "meils2026";   // <-- change this to update the dashboard password
-  try { if (sessionStorage.getItem('mtv_ok') === '1') return; } catch(e){}
-  var ok = false;
-  for (var i=0; i<3 && !ok; i++){
-    var v = prompt("Enter dashboard password:");
-    if (v === null) break;
-    if (v === PASS){ ok = true; try{ sessionStorage.setItem('mtv_ok','1'); }catch(e){} }
-  }
-  if (!ok){ document.documentElement.innerHTML = '<body style="background:#0d1117;color:#8b949e;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">Access denied. Reload to try again.</body>'; throw new Error('locked'); }
-})();
-</script>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1663,5 +1650,32 @@ renderAll();                       // paint empty shell immediately
 fetchData();                       // first pull
 setInterval(fetchData, 5*60*1000); // auto-refresh every 5 minutes
 </script>
+<div id="mtv-gate" style="position:fixed;inset:0;z-index:999999;background:#0d1117;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;">
+  <div style="text-align:center;color:#e6edf3;">
+    <div style="font-size:22px;font-weight:800;letter-spacing:.04em;margin-bottom:6px;color:#00A0AA;">MEILS Sales Command Center</div>
+    <div style="font-size:13px;color:#8b949e;margin-bottom:18px;">Enter password to view the dashboard</div>
+    <input id="mtv-pass" type="password" autofocus placeholder="Password"
+      style="font-size:18px;padding:12px 16px;border-radius:10px;border:1px solid #30363d;background:#161b22;color:#fff;width:260px;text-align:center;outline:none;">
+    <div id="mtv-err" style="color:#f85149;font-size:12px;height:16px;margin-top:8px;"></div>
+    <button id="mtv-go" style="margin-top:10px;font-size:16px;font-weight:700;padding:11px 26px;border:none;border-radius:10px;background:#00A0AA;color:#fff;cursor:pointer;">Enter</button>
+  </div>
+</div>
+<script>
+(function(){
+  var PASS = "meils2026";   // <-- change this to update the dashboard password
+  var gate = document.getElementById('mtv-gate');
+  var inp  = document.getElementById('mtv-pass');
+  var err  = document.getElementById('mtv-err');
+  try { if (sessionStorage.getItem('mtv_ok') === '1'){ gate.remove(); return; } } catch(e){}
+  function tryUnlock(){
+    if (inp.value === PASS){ try{ sessionStorage.setItem('mtv_ok','1'); }catch(e){} gate.remove(); }
+    else { err.textContent = 'Wrong password'; inp.value=''; inp.focus(); }
+  }
+  document.getElementById('mtv-go').addEventListener('click', tryUnlock);
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') tryUnlock(); });
+  inp.focus();
+})();
+</script>
+
 </body>
 </html>
