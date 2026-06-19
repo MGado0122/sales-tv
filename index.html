@@ -649,12 +649,12 @@
     <div class="kpi-card kpi-c4">
       <div class="label">Opportunities</div>
       <div class="value" id="kpi-opp">0</div>
-      <div class="sub">Active pipeline</div>
+      <div class="sub">Today</div>
     </div>
     <div class="kpi-card kpi-c5">
       <div class="label">Mega Deals</div>
       <div class="value" id="kpi-mega">0</div>
-      <div class="sub">Project opportunities</div>
+      <div class="sub">Today</div>
     </div>
     <div class="kpi-card kpi-c6">
       <div class="label">Total Entries Today</div>
@@ -685,7 +685,7 @@
     <div class="top-team-banner">
       <div class="trophy">🏆</div>
       <div class="top-team-info">
-        <h2>Top Team — This Week</h2>
+        <h2>Top Team — Today</h2>
         <div class="team-name" id="top-team-name">No data yet</div>
         <div class="team-stats" id="top-team-stats">Add confirmed shipments to see rankings</div>
       </div>
@@ -1485,8 +1485,8 @@ function renderAll() {
   const confirmedToday = today.filter(e=>e.status==='confirmed');
   const cancelledToday = today.filter(e=>e.status==='cancelled');
   const rfqToday       = today.filter(e=>e.status==='rfq');
-  const oppAll         = entries.filter(e=>e.status==='opportunity');
-  const megaAll        = entries.filter(e=>e.status==='mega');
+  const oppAll         = today.filter(e=>e.status==='opportunity');   // today only
+  const megaAll        = today.filter(e=>e.status==='mega');           // today only
   const confirmedWeek  = thisWeek.filter(e=>e.status==='confirmed');
   const megaToday      = today.filter(e=>e.status==='mega');
   const megaWeek       = thisWeek.filter(e=>e.status==='mega');
@@ -1519,11 +1519,11 @@ function renderAll() {
   document.getElementById('ov-opp').textContent       = ovToday.filter(e=>e.status==='opportunity').length;
   document.getElementById('ov-cancelled').textContent = ovToday.filter(e=>e.status==='cancelled').length;
 
-  // Top team (based on confirmed shipments this week)
+  // Top team (based on confirmed shipments today)
   const tScores = [1,2,3,4,5,6].map(t=>({
     t,
-    count: winWeek.filter(e=>effTeam(e)==t).length,
-    rev: winWeek.filter(e=>effTeam(e)==t).reduce((s,e)=>s+e.value,0)
+    count: winToday.filter(e=>effTeam(e)==t).length,
+    rev: winToday.filter(e=>effTeam(e)==t).reduce((s,e)=>s+e.value,0)
   }));
   const maxC = Math.max(...tScores.map(x=>x.count),1);
   tScores.forEach(ts => {
@@ -1535,7 +1535,7 @@ function renderAll() {
   if (top.count>0) {
     const newTopName = names[top.t-1];
     document.getElementById('top-team-name').textContent = newTopName;
-    document.getElementById('top-team-stats').textContent = `${top.count} confirmed shipment${top.count!==1?'s':''} this week`;
+    document.getElementById('top-team-stats').textContent = `${top.count} confirmed shipment${top.count!==1?'s':''} today`;
     // Flash banner if top team changed or count increased
     if (prevTopName !== newTopName || window._lastTopCount !== top.count) {
       const banner = document.querySelector('.top-team-banner');
