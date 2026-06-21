@@ -1703,8 +1703,8 @@ function openSummary(){
   document.getElementById('sum-rfq').textContent       = today.filter(e=>e.status==='rfq').length;
   document.getElementById('sum-confirmed').textContent = winToday.length;
   document.getElementById('sum-cancelled').textContent = today.filter(e=>e.status==='cancelled').length;
-  document.getElementById('sum-opp').textContent       = entries.filter(e=>e.status==='opportunity').length;
-  document.getElementById('sum-mega').textContent      = entries.filter(e=>e.status==='mega').length;
+  document.getElementById('sum-opp').textContent       = today.filter(e=>e.status==='opportunity').length;
+  document.getElementById('sum-mega').textContent      = today.filter(e=>e.status==='mega').length;
 
   document.getElementById('summary-overlay').classList.add('active');
 }
