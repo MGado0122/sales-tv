@@ -1717,6 +1717,15 @@ function handleSummaryClick(e){ if(e.target === document.getElementById('summary
 // (Summary shows only when the 📊 button is pressed — no auto popup)
 
 // ─── DATA LAYER (Google Sheets via Apps Script Web App) ──
+function normStatus(s){
+  s = String(s||'').trim().toLowerCase();
+  if (s.indexOf('cancel') > -1) return 'cancelled';
+  if (s.indexOf('mega') > -1) return 'mega';
+  if (s.indexOf('opportun') > -1 || s === 'opp') return 'opportunity';
+  if (s.indexOf('rfq') > -1 || s.indexOf('quote') > -1) return 'rfq';
+  if (s.indexOf('confirm') > -1 || s.indexOf('shipment') > -1) return 'confirmed';
+  return s;
+}
 const TEAM_NUM = { whale:'1', lion:'2', tiger:'3', ali:'4', meram:'5', sayeda:'6' };
 function parseRow(r){
   const raw = String(r['Date']||'').trim();
@@ -1734,7 +1743,7 @@ function parseRow(r){
   let team = String(r['Team']||'').trim();
   if (/[a-z]/i.test(team)) team = TEAM_NUM[team.toLowerCase()] || team;
   return {
-    status:      String(r['Status']||'').trim().toLowerCase(),
+    status:      normStatus(r['Status']),
     client:      r['Client']||'',
     companyType: r['Company Type']||'',
     salesperson: r['Salesperson']||'',
