@@ -1335,6 +1335,7 @@ function fmt(n) {
   return '$'+n.toLocaleString();
 }
 function timeAgo(iso) {
+  if(!iso) return '';
   const m = Math.floor((Date.now()-new Date(iso))/60000);
   if(m<1) return 'Just now'; if(m<60) return m+'m ago';
   const h=Math.floor(m/60); if(h<24) return h+'h ago';
@@ -1713,8 +1714,7 @@ function closeSummary(){
   setTimeout(()=>{ ov.classList.remove('active'); ov.style.opacity=''; ov.style.transition=''; },250);
 }
 function handleSummaryClick(e){ if(e.target === document.getElementById('summary-overlay')) closeSummary(); }
-// Auto-rotate: pop the summary every 4 min for ~25s (hands-off TV)
-setInterval(function(){ try{ if(entries.length){ openSummary(); setTimeout(closeSummary, 25000); } }catch(e){} }, 4*60*1000);
+// (Summary shows only when the 📊 button is pressed — no auto popup)
 
 // ─── DATA LAYER (Google Sheets via Apps Script Web App) ──
 const TEAM_NUM = { whale:'1', lion:'2', tiger:'3', ali:'4', meram:'5', sayeda:'6' };
@@ -1728,8 +1728,8 @@ function parseRow(r){
     if (m) { d = new Date(+m[3], +m[1]-1, +m[2]); }
     else { d = new Date(raw); }
   }
-  if (isNaN(d.getTime())) d = new Date();
-  const ts = d.toISOString();
+  const valid = !isNaN(d.getTime());
+  const ts = valid ? d.toISOString() : '';
   // Team column accepts a number ("1".."6") OR a name ("Whale".."Sayeda")
   let team = String(r['Team']||'').trim();
   if (/[a-z]/i.test(team)) team = TEAM_NUM[team.toLowerCase()] || team;
@@ -1742,11 +1742,11 @@ function parseRow(r){
     type:        r['Shipment Type']||'',
     notes:       r['Notes']||'',
     timestamp:   ts,
-    day:         _localYMD(d),
-    week:        weekKey(ts)
+    day:         valid ? _localYMD(d) : '',
+    week:        valid ? weekKey(ts) : ''
   };
 }
-function rowKey(e){ return [e.status,e.client,e.salesperson,e.team,e.timestamp].join('|'); }
+function rowKey(e){ return [e.day,e.status,e.client,e.salesperson,e.team,e.type,e.notes].join('|'); }
 let _seenKeys = null;
 
 async function fetchData(){
@@ -1762,7 +1762,7 @@ async function fetchData(){
     const keys = new Set(mapped.map(rowKey));
     if(_seenKeys){
       const fresh = mapped.filter(e=>!_seenKeys.has(rowKey(e)) && isToday(e));
-      if(fresh.length) celebrate(fresh[0]);
+      fresh.slice(0,5).reverse().forEach((e,i)=> setTimeout(()=>celebrate(e), i*3500));
     }
     _seenKeys = keys;
 
