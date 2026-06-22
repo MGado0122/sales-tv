@@ -502,6 +502,7 @@
   .cnt-btn:active { transform:scale(0.85); box-shadow:0 1px 4px rgba(0,0,0,0.4); }
   .cnt-btn svg { width:15px; height:15px; pointer-events:none; }
 
+  img.emoji { height:1em; width:1em; margin:0 .04em; vertical-align:-0.12em; display:inline-block; }
 </style>
 </head>
 <body>
@@ -839,6 +840,7 @@
   </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
 <script>
 // ─── STATE ───────────────────────────────────────────────
 // ====== BACKEND CONFIG ======
@@ -854,6 +856,8 @@ function getCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
+
+function emojify(el){ try{ if(window.twemoji) twemoji.parse(el||document.body, {folder:'svg', ext:'.svg'}); }catch(e){} }
 
 // ─── SOUNDS ──────────────────────────────────────────────
 const SOUNDS = {
@@ -1384,6 +1388,7 @@ function showNewDealOverlay(entry, teamName) {
   wrap.style.animation = '';
 
   overlay.classList.add('active');
+  emojify(overlay);
   playBoom();
   // screen shake
   document.body.classList.add('shake');
@@ -1577,6 +1582,7 @@ function renderAll() {
   renderList('list-opp',       oppAll,         'opportunity', names, 'v-yellow');
   renderList('list-cancelled', cancelledToday, 'cancelled',   names, 'v-red');
   renderList('list-mega',      megaAll,        'mega',        names, 'v-purple', true);
+  emojify();
 }
 
 const EMPTY = {
@@ -1706,6 +1712,7 @@ function openSummary(){
   document.getElementById('sum-opp').textContent       = today.filter(e=>e.status==='opportunity').length;
   document.getElementById('sum-mega').textContent      = today.filter(e=>e.status==='mega').length;
 
+  emojify(document.getElementById('summary-overlay'));
   document.getElementById('summary-overlay').classList.add('active');
 }
 function closeSummary(){
@@ -1806,6 +1813,7 @@ function celebrate(entry){
 // ─── INIT ────────────────────────────────────────────────
 ['click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function _u(){ try{ getCtx().resume(); }catch(e){} }, { once:true }); });
 renderAll();                       // paint empty shell immediately
+emojify();
 fetchData();                       // first pull
 setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
 </script>
