@@ -1783,21 +1783,28 @@ async function fetchData(){
   }
 }
 
+function teamSound(entry, tname){
+  if (isOverseas(entry.salesperson)) overseasWin();          // 🌍 overseas jet + voice
+  else if (entry.team == 4 || /\bali\b/i.test(tname)) carEngine();  // Ali engine
+  else speakConfirmed(tname, entry.team);                    // Whale/Lion/Tiger/Meram/Sayeda signature
+}
 function celebrate(entry){
   const names = getTeamNames();
   const tname = names[parseInt(effTeam(entry))-1] || names[parseInt(entry.team)-1] || '';
-  try{ showNewDealOverlay(entry, tname); }catch(e){}
-  if (entry.status === 'opportunity') oppAlert();
-  else if (entry.status === 'cancelled') speakCancelled();
-  else if (entry.status === 'rfq') speakRFQ();
-  else if (entry.status === 'confirmed' && isOverseas(entry.salesperson)) overseasWin();
-  else if (entry.status === 'confirmed' || entry.status === 'mega'){
-    if (entry.team == 4 || /\bali\b/i.test(tname)) carEngine();
-    else speakConfirmed(tname, entry.team);
+  try { getCtx().resume(); } catch(e){}                 // make sure audio is unlocked
+  try{ showNewDealOverlay(entry, tname); }catch(e){}    // shows action label + team slogan on screen
+  switch (entry.status) {
+    case 'rfq':         speakRFQ();        break;        // RFQ siren + voice
+    case 'opportunity': oppAlert();        break;        // opportunity fanfare + voice
+    case 'cancelled':   speakCancelled();  break;        // loss cue + voice
+    case 'mega':        playCheer(); setTimeout(()=>teamSound(entry, tname), 600); break; // cheer + team sound
+    case 'confirmed':
+    default:            teamSound(entry, tname);         // team signature sound
   }
 }
 
 // ─── INIT ────────────────────────────────────────────────
+['click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function _u(){ try{ getCtx().resume(); }catch(e){} }, { once:true }); });
 renderAll();                       // paint empty shell immediately
 fetchData();                       // first pull
 setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
@@ -1820,7 +1827,7 @@ setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
   var err  = document.getElementById('mtv-err');
   try { if (sessionStorage.getItem('mtv_ok') === '1'){ gate.remove(); return; } } catch(e){}
   function tryUnlock(){
-    if (inp.value === PASS){ try{ sessionStorage.setItem('mtv_ok','1'); }catch(e){} gate.remove(); }
+    if (inp.value === PASS){ try{ sessionStorage.setItem('mtv_ok','1'); }catch(e){} try{ if(window.getCtx) getCtx().resume(); }catch(e){} gate.remove(); }
     else { err.textContent = 'Wrong password'; inp.value=''; inp.focus(); }
   }
   document.getElementById('mtv-go').addEventListener('click', tryUnlock);
