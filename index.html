@@ -502,6 +502,8 @@
   .cnt-btn:active { transform:scale(0.85); box-shadow:0 1px 4px rgba(0,0,0,0.4); }
   .cnt-btn svg { width:15px; height:15px; pointer-events:none; }
 
+  .sb { padding:9px 13px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; color:var(--text); font-size:14px; font-weight:600; cursor:pointer; }
+  .sb:hover { background:#1f6f78; }
   img.emoji { height:1em; width:1em; margin:0 .04em; vertical-align:-0.12em; display:inline-block; }
 </style>
 </head>
@@ -540,6 +542,7 @@
   </div>
   <div class="header-right">
     <span id="clock"></span>
+    <button onclick="toggleSoundboard()" id="sbBtn" title="Soundboard" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎛️</button>
     <button onclick="openSummary()" id="summaryBtn" title="Show Summary" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">📊</button>
     <button onclick="toggleSound()" id="soundBtn" title="Toggle Sound" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">🔊</button>
     <button onclick="toggleFullView()" id="fullViewBtn" title="Full View" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid #0a8f8f;color:#0cbfbf;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">⛶</button>
@@ -838,6 +841,29 @@
       </div>
     </div>
   </div>
+
+  <!-- SOUNDBOARD (mouse-clickable) -->
+  <div id="soundboard" style="display:none; position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:99990; background:rgba(22,27,34,0.97); border:1px solid var(--border); border-radius:14px; padding:12px 16px; box-shadow:0 10px 34px rgba(0,0,0,.55); max-width:96vw;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:9px;">
+      <button class="sb" onclick="applause()">👏 Applause</button>
+      <button class="sb" onclick="booSound()">👎 Booo</button>
+      <button class="sb" onclick="playCheer()">🎉 Cheer</button>
+      <button class="sb" onclick="speakRFQ()">📋 RFQ</button>
+      <button class="sb" onclick="oppAlert()">💡 Opportunity</button>
+      <button class="sb" onclick="SOUNDS.confirmed()">✅ Confirmed</button>
+      <button class="sb" onclick="SOUNDS.mega()">🌟 Mega</button>
+      <button class="sb" onclick="speakCancelled()">❌ Cancelled</button>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+      <button class="sb" onclick="whaleCall()">🐋 Whale</button>
+      <button class="sb" onclick="lionRoar()">🦁 Lion</button>
+      <button class="sb" onclick="tigerRoar()">🐯 Tiger</button>
+      <button class="sb" onclick="carEngine()">🏎️ Ali</button>
+      <button class="sb" onclick="catMeow()">🐱 Meram</button>
+      <button class="sb" onclick="cashRegister()">💰 Sayeda</button>
+      <button class="sb" onclick="overseasWin()">🌍 Overseas</button>
+    </div>
+  </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
@@ -950,6 +976,7 @@ function speak(text, {pitch=1, rate=1, vol=1}={}) {
   if (!soundEnabled) return;
   try {
     const synth = window.speechSynthesis; if (!synth) return;
+    try{ synth.resume(); }catch(e){}
     if (!_voices.length) _loadVoices();
     const u = new SpeechSynthesisUtterance(text);
     u.pitch = pitch; u.rate = rate; u.volume = vol; u.lang = 'en-US';
@@ -1133,6 +1160,53 @@ function cashRegister(){
       });
     });
   }catch(e){}
+}
+
+// CROWD BOO (basketball-style)
+function booSound(){
+  if(!soundEnabled) return;
+  try{
+    const ctx=getCtx(), t=ctx.currentTime;
+    const master=ctx.createGain(); master.gain.value=0.95; master.connect(ctx.destination);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520; lp.connect(master);
+    const ns=ctx.createBufferSource(); ns.buffer=_noiseBuf(ctx,1.9,0.45);
+    const nf=ctx.createBiquadFilter(); nf.type='bandpass'; nf.frequency.value=240; nf.Q.value=0.5;
+    const ng=ctx.createGain(); ng.gain.value=0.3; ns.connect(nf); nf.connect(ng); ng.connect(master);
+    [150,153,147,75].forEach((fr,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type = i===3 ? 'sine' : 'sawtooth';
+      o.frequency.setValueAtTime(fr,t);
+      o.frequency.linearRampToValueAtTime(fr*0.78,t+1.5);
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.26,t+0.15);
+      g.gain.setValueAtTime(0.26,t+1.15); g.gain.exponentialRampToValueAtTime(0.001,t+1.65);
+      o.connect(g); g.connect(lp); o.start(t); o.stop(t+1.7);
+    });
+    ns.start(t); ns.stop(t+1.8);
+  }catch(e){}
+}
+// APPLAUSE / clapping
+function applause(){
+  if(!soundEnabled) return;
+  try{
+    const ctx=getCtx(), t=ctx.currentTime;
+    const master=ctx.createGain(); master.connect(ctx.destination);
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=3200; bp.Q.value=0.5; bp.connect(master);
+    for(let i=0;i<46;i++){
+      const d=t+Math.random()*2.1;
+      const ns=ctx.createBufferSource(); ns.buffer=_noiseBuf(ctx,0.05,0.6);
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.3+Math.random()*0.35,d); g.gain.exponentialRampToValueAtTime(0.001,d+0.05);
+      ns.connect(g); g.connect(bp); ns.start(d); ns.stop(d+0.06);
+    }
+    master.gain.setValueAtTime(0.1,t); master.gain.linearRampToValueAtTime(0.95,t+0.5);
+    master.gain.setValueAtTime(0.95,t+1.7); master.gain.linearRampToValueAtTime(0.05,t+2.3);
+  }catch(e){}
+}
+
+function toggleSoundboard(){
+  const el=document.getElementById('soundboard');
+  const show = el.style.display==='none' || !el.style.display;
+  el.style.display = show ? 'block' : 'none';
+  if(show){ try{ getCtx().resume(); }catch(e){} emojify(el); }
 }
 
 function speakConfirmed(teamName, teamIdx) {
@@ -1811,7 +1885,7 @@ function celebrate(entry){
 }
 
 // ─── INIT ────────────────────────────────────────────────
-['click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function _u(){ try{ getCtx().resume(); }catch(e){} }, { once:true }); });
+['click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function _u(){ try{ getCtx().resume(); }catch(e){} try{ if(window.speechSynthesis){ const w=new SpeechSynthesisUtterance(' '); w.volume=0; speechSynthesis.speak(w); } }catch(e){} }, { once:true }); });
 renderAll();                       // paint empty shell immediately
 emojify();
 fetchData();                       // first pull
