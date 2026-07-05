@@ -521,6 +521,24 @@
   .summary-portrait { width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15); margin-right:12px; }
   .summary-star-section, .summary-team-section { align-items:center; }
 
+
+  /* ── TEAM BATTLE MODE ── */
+  .battle-overlay { display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.92); align-items:center; justify-content:center; flex-direction:column; }
+  .battle-overlay.active { display:flex; animation: battleIn 0.8s ease both; }
+  @keyframes battleIn { 0%{opacity:0;transform:scale(0.8);} 60%{opacity:1;transform:scale(1.02);} 100%{opacity:1;transform:scale(1);} }
+  .battle-overlay img { max-width:90vw; max-height:80vh; border-radius:16px; box-shadow:0 24px 80px rgba(0,0,0,0.6); }
+  .battle-title { font-size:48px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:4px; margin-bottom:24px; text-shadow:0 4px 20px rgba(245,158,11,0.4); animation: battlePulse 1.5s ease infinite; }
+  @keyframes battlePulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.85;transform:scale(1.05);} }
+  .battle-close { position:absolute; top:30px; right:40px; font-size:36px; color:#fff; opacity:0.5; cursor:pointer; }
+  .battle-close:hover { opacity:1; }
+
+
+  /* ── TIME TOGGLE ── */
+  .time-toggle { display:flex; gap:8px; }
+  .time-toggle-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--muted); padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .time-toggle-btn:hover { background:rgba(255,255,255,0.1); color:#e2e8f0; }
+  .time-toggle-btn.active { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border-color:transparent; box-shadow:0 4px 14px rgba(59,130,246,0.35); }
+
 </style>
 </head>
 <body>
@@ -651,6 +669,13 @@
   </div>
 
   <!-- KPI CARDS -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div class="time-toggle">
+      <button class="time-toggle-btn active" data-range="today" onclick="setTimeRange('today')">Today</button>
+      <button class="time-toggle-btn" data-range="week" onclick="setTimeRange('week')">This Week</button>
+      <button class="time-toggle-btn" data-range="month" onclick="setTimeRange('month')">This Month</button>
+    </div>
+  </div>
   <div class="kpi-row">
     <div class="kpi-card kpi-c1">
       <div class="label">RFQs Today</div>
@@ -757,7 +782,14 @@
 
 
 
-  <!-- ROW 1: RFQs + Confirmed Shipments -->
+  <!-- TEAM BATTLE OVERLAY -->
+<div class="battle-overlay" id="battle-overlay" onclick="closeBattle()">
+  <div class="battle-close">✕</div>
+  <div class="battle-title" id="battle-title">⚔️ Team Battle</div>
+  <img id="battle-img" src="" alt="Team Battle">
+</div>
+
+<!-- ROW 1: RFQs + Confirmed Shipments -->
   <div class="tables-grid" style="margin-bottom:18px;">
     <div class="deal-table-card">
       <div class="table-header">
@@ -893,7 +925,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyV6mi-ERPNZmXng1_UQqnD
 // ─── IMAGE ASSETS ────────────────────────────────────────
 const IMG_BASE = './images';
 const PORTRAITS = {
-  'Mahmoud':'mahmoud.png','Hazem':'hazem.png','Loza':'loza.png','Nancy':'nancy.png',
+  'Mahmoud':'mahmoud.png','Hazem':'hazem.png','Loza':'loza.png','Yasmine':'loza.png','Nancy':'nancy.png',
   'Walaa':'walaa.png','Asser':'asser.png','Omar':'omar.png','Engy':'engy.png',
   'Sawsan':'sawsan.png','Gendia':'gendia.png','Esraa':'esraa.png',
   'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png',
@@ -1004,18 +1036,41 @@ function toggleSound() {
 let _voices = [];
 function _loadVoices(){ try{ _voices = window.speechSynthesis.getVoices()||[]; }catch(e){} }
 if (window.speechSynthesis){ _loadVoices(); window.speechSynthesis.onvoiceschanged = _loadVoices; }
-function speak(text, {pitch=1, rate=1, vol=1}={}) {
+// Pre-recorded audio announcements using Web Audio (works on LG TV)
+const ANNOUNCEMENTS = {
+  'opportunity': [440, 554, 659, 880], // C-E-G-C chord = bright
+  'rfq': [520, 780, 1040], // alert pattern
+  'cancelled': [190, 150, 110], // descending moo
+  'car': [200, 300, 400], // engine rev
+  'overseas': [523, 659, 784, 1047, 1319], // triumphant chord
+};
+function _playToneSeq(freqs, dur, type='sine') {
   if (!soundEnabled) return;
   try {
-    const synth = window.speechSynthesis; if (!synth) return;
-    try{ synth.resume(); }catch(e){}
-    if (!_voices.length) _loadVoices();
-    const u = new SpeechSynthesisUtterance(text);
-    u.pitch = pitch; u.rate = rate; u.volume = vol; u.lang = 'en-US';
-    const v = _voices.find(x=>/en[-_]US/i.test(x.lang)) || _voices.find(x=>/^en/i.test(x.lang));
-    if (v) u.voice = v;
-    synth.cancel(); synth.speak(u);
-  } catch(e) {}
+    const ctx = getCtx(), t = ctx.currentTime;
+    const master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
+    freqs.forEach((fr, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.value = fr;
+      const d = i * dur;
+      g.gain.setValueAtTime(0, t+d);
+      g.gain.linearRampToValueAtTime(0.35, t+d+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, t+d+dur);
+      o.connect(g); g.connect(master);
+      o.start(t+d); o.stop(t+d+dur);
+    });
+  } catch(e){}
+}
+function speak(text, {pitch=1, rate=1, vol=1}={}) {
+  // Replaced TTS with synthesized tones — works on all TVs including LG webOS
+  if (!soundEnabled) return;
+  const t = text.toLowerCase();
+  if (t.includes('opportunity')) _playToneSeq(ANNOUNCEMENTS.opportunity, 0.15, 'sine');
+  else if (t.includes('r.f.q') || t.includes('rfq')) _playToneSeq(ANNOUNCEMENTS.rfq, 0.12, 'triangle');
+  else if (t.includes('lost') || t.includes('cancelled')) _playToneSeq(ANNOUNCEMENTS.cancelled, 0.35, 'sawtooth');
+  else if (t.includes('voooom')) _playToneSeq(ANNOUNCEMENTS.car, 0.2, 'sawtooth');
+  else if (t.includes('overseas')) _playToneSeq(ANNOUNCEMENTS.overseas, 0.18, 'sine');
+  else _playToneSeq([440, 554, 659], 0.2, 'sine'); // generic bright chord
 }
 // team-matched delivery: Whale deep+slow, Lion strong roar, Tiger sharp+fast
 // ─── ANIMAL SOUNDS (synthesized, loud for big screen) ────
@@ -1439,6 +1494,11 @@ function weekKey(date) {
 }
 function isToday(e) { return e.day === todayKey(); }
 function isThisWeek(e) { return e.week === weekKey(new Date()); }
+function isThisMonth(e) {
+  const now = new Date();
+  const d = new Date(e.ts);
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
 function fmt(n) {
   if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M';
   if(n>=1000) return '$'+(n/1000).toFixed(0)+'K';
@@ -1453,6 +1513,24 @@ function timeAgo(iso) {
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function getTeamNames() { return ['Whale','Lion','Tiger','Ali','Meram','Sayeda']; }
+
+// ─── TIME RANGE TOGGLE ───────────────────────────────────
+let timeRange = 'today'; // 'today' | 'week' | 'month'
+function setTimeRange(range) {
+  timeRange = range;
+  document.querySelectorAll('.time-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.range === range);
+  });
+  renderAll();
+}
+function filterByRange(entriesArr) {
+  if (timeRange === 'week') return entriesArr.filter(isThisWeek);
+  if (timeRange === 'month') return entriesArr.filter(isThisMonth);
+  return entriesArr.filter(isToday);
+}
+function rangeLabel() {
+  return timeRange === 'week' ? 'This Week' : timeRange === 'month' ? 'This Month' : 'Today';
+}
 
 // ─── NEW DEAL OVERLAY ────────────────────────────────────
 let overlayTimer = null;
@@ -1529,6 +1607,28 @@ function showNewDealOverlay(entry, teamName) {
   }, 1000);
 }
 
+let battleTimer = null;
+function showBattle(topTeamIdx, secondTeamIdx) {
+  const names = getTeamNames();
+  const t1 = names[topTeamIdx-1].toLowerCase();
+  const t2 = names[secondTeamIdx-1].toLowerCase();
+  const imgMap = {
+    'lions-tigers': './images/moments/vs-lions-tigers.png',
+  };
+  // Try specific matchup, fallback to generic
+  let imgSrc = imgMap[`${t1}-${t2}`] || imgMap[`${t2}-${t1}`] || '';
+  if (!imgSrc) return; // No image for this matchup
+  document.getElementById('battle-img').src = imgSrc;
+  document.getElementById('battle-title').textContent = `⚔️ ${names[topTeamIdx-1]} vs ${names[secondTeamIdx-1]}`;
+  document.getElementById('battle-overlay').classList.add('active');
+  if (battleTimer) clearTimeout(battleTimer);
+  battleTimer = setTimeout(closeBattle, 5000);
+}
+function closeBattle() {
+  document.getElementById('battle-overlay').classList.remove('active');
+  if (battleTimer) clearTimeout(battleTimer);
+}
+
 function closeOverlay() {
   clearInterval(overlayTimer);
   const overlay = document.getElementById('nd-overlay');
@@ -1601,7 +1701,7 @@ function renderAll() {
   const now = new Date();
   document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const names = getTeamNames();
-  const today = entries.filter(isToday);
+  const today = filterByRange(entries);
   const thisWeek = entries.filter(isThisWeek);
 
   const byStatus = (s, fromToday) => {
@@ -1624,17 +1724,18 @@ function renderAll() {
   updateCEO(winToday.length);
 
   // KPIs (all derived from the Google Sheet rows)
+  const rangeLbl = rangeLabel();
   document.getElementById('kpi-rfq').textContent        = rfqToday.length;
   document.getElementById('kpi-cancelled').textContent  = cancelledToday.length;
   document.getElementById('kpi-opp').textContent        = oppAll.length;
   document.getElementById('kpi-mega').textContent       = megaAll.length;
   document.getElementById('kpi-confirmed').textContent  = winToday.length;
-  document.getElementById('kpi-confirmed-sub').innerHTML = megaToday.length ? `Today · incl. <span style="color:#c9a6ff;font-weight:700;">🌟 ${megaToday.length} mega</span>` : 'Today';
+  document.getElementById('kpi-confirmed-sub').innerHTML = megaToday.length ? `${rangeLbl} · incl. <span style="color:#c9a6ff;font-weight:700;">🌟 ${megaToday.length} mega</span>` : rangeLbl;
   document.getElementById('kpi-rev').textContent        = winToday.length;
 
   // Badges
   document.getElementById('badge-rfq').textContent       = rfqToday.length;
-  document.getElementById('badge-confirmed').textContent  = `${winToday.length} today`;
+  document.getElementById('badge-confirmed').textContent  = `${winToday.length} ${rangeLbl.toLowerCase()}`;
   document.getElementById('badge-opp').textContent        = oppAll.length;
   document.getElementById('badge-cancelled').textContent  = cancelledToday.length;
   document.getElementById('badge-mega').textContent       = megaAll.length;
@@ -1658,11 +1759,16 @@ function renderAll() {
     document.getElementById(`bar-t${ts.t}-count`).textContent = ts.count;
   });
   const top = tScores.reduce((a,b)=> b.count>a.count||(b.count===a.count&&b.rev>a.rev)?b:a);
+  // Team Battle Mode: if top 2 are within 2 shipments and both have >0, show battle
+  const sorted = tScores.slice().sort((a,b)=>b.count-a.count||b.rev-a.rev);
+  if (sorted[0].count > 0 && sorted[1].count > 0 && (sorted[0].count - sorted[1].count) <= 2) {
+    showBattle(sorted[0].t, sorted[1].t);
+  }
   const prevTopName = document.getElementById('top-team-name').textContent;
   if (top.count>0) {
     const newTopName = names[top.t-1];
     document.getElementById('top-team-name').textContent = newTopName;
-    document.getElementById('top-team-stats').textContent = `${top.count} confirmed shipment${top.count!==1?'s':''} today`;
+    document.getElementById('top-team-stats').textContent = `${top.count} confirmed shipment${top.count!==1?'s':''} ${rangeLbl.toLowerCase()}`;
     // Flash banner if top team changed or count increased
     if (prevTopName !== newTopName || window._lastTopCount !== top.count) {
       const banner = document.querySelector('.top-team-banner');
@@ -1692,7 +1798,7 @@ function renderAll() {
   if (people.length > 0) {
     const star = people.sort((a,b)=>b[1].count-a[1].count)[0];
     document.getElementById('star-name').textContent = star[0];
-    document.getElementById('star-sub').textContent = `${star[1].count} confirmed shipment${star[1].count!==1?'s':''} today · ${names[parseInt(star[1].team)-1]}`;
+    document.getElementById('star-sub').textContent = `${star[1].count} confirmed shipment${star[1].count!==1?'s':''} ${rangeLbl.toLowerCase()} · ${names[parseInt(star[1].team)-1]}`;
     const spUrl = portraitUrl(star[0]);
     starWrap.innerHTML = spUrl ? `<img src="${spUrl}" class="portrait" alt="${esc(star[0])}">` : '';
   } else {
