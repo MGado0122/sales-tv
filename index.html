@@ -505,6 +505,22 @@
   .sb { padding:9px 13px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; color:var(--text); font-size:14px; font-weight:600; cursor:pointer; }
   .sb:hover { background:#1f6f78; }
   img.emoji { height:1em; width:1em; margin:0 .04em; vertical-align:-0.12em; display:inline-block; }
+
+  /* ── PORTRAITS & HERO CARDS ── */
+  .portrait { width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid rgba(255,255,255,0.15); box-shadow:0 4px 16px rgba(0,0,0,0.3); }
+  .portrait-lg { width:120px; height:120px; border-radius:50%; object-fit:cover; border:4px solid rgba(255,255,255,0.2); box-shadow:0 8px 32px rgba(0,0,0,0.4); }
+  .portrait-xl { width:180px; height:180px; border-radius:50%; object-fit:cover; border:5px solid rgba(255,255,255,0.25); box-shadow:0 12px 48px rgba(0,0,0,0.5); animation: heroPop 0.6s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes heroPop { 0%{transform:scale(0);opacity:0;} 60%{transform:scale(1.15);opacity:1;} 100%{transform:scale(1);opacity:1;} }
+  .star-card { position:relative; }
+  .star-portrait-wrap { position:absolute; right:18px; top:50%; transform:translateY(-50%); }
+  .nd-hero { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:16px; }
+  .nd-hero .portrait-xl { margin-bottom:4px; }
+  .nd-hero .team-badge-img { height:60px; width:auto; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); animation: badgeSlide 0.5s ease 0.3s both; }
+  @keyframes badgeSlide { from{opacity:0;transform:translateX(-30px);} to{opacity:1;transform:translateX(0);} }
+  .last-updated { font-size:11px; color:var(--muted); margin-left:12px; }
+  .summary-portrait { width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15); margin-right:12px; }
+  .summary-star-section, .summary-team-section { align-items:center; }
+
 </style>
 </head>
 <body>
@@ -553,6 +569,7 @@
 
 <!-- NEW DEAL FULL-SCREEN OVERLAY -->
 <div id="nd-overlay" onclick="closeOverlay()">
+  <div class="nd-hero" id="nd-hero-wrap"></div>
   <div class="nd-animal" id="nd-animal">🐋</div>
   <div class="nd-stamp-wrap">
     <!-- Red rubber stamp SVG recreated inline -->
@@ -734,6 +751,7 @@
         <div class="star-name" id="star-name">—</div>
         <div class="star-sub" id="star-sub">Most confirmed shipments today</div>
       </div>
+      <div class="star-portrait-wrap" id="star-portrait-wrap"></div>
     </div>
   </div>
 
@@ -806,16 +824,16 @@
         <h2>📊 <span>Daily</span> Summary</h2>
         <div class="summary-date" id="sum-date"></div>
       </div>
-      <div class="summary-star-section">
+      <div class="summary-star-section" id="sum-star-section">
         <div class="summary-star-emoji">⭐</div>
-        <div>
+        <div id="sum-star-text">
           <div class="sum-label">Star of the Day</div>
           <div class="summary-star-name" id="sum-star-name">—</div>
           <div class="summary-star-sub"  id="sum-star-sub"></div>
         </div>
       </div>
       <div class="summary-team-section team-default-bg" id="sum-team-section">
-        <div class="summary-animal-wrap"><span class="summary-animal-emoji" id="sum-animal">🏆</span></div>
+        <div class="summary-animal-wrap" id="sum-team-animal-wrap"><span class="summary-animal-emoji" id="sum-animal">🏆</span></div>
         <div>
           <div class="summary-team-label">Winning Team — Today</div>
           <div class="summary-team-name" id="sum-team-name">—</div>
@@ -871,6 +889,20 @@
 // ─── STATE ───────────────────────────────────────────────
 // ====== BACKEND CONFIG ======
 const API_URL = "https://script.google.com/macros/s/AKfycbyV6mi-ERPNZmXng1_UQqnDj2uUQe0E35NyhKzJd-FBQUeUuJD6dIB7nYDYcf6Wel2N/exec";   // <-- paste your Google Apps Script Web App URL here
+
+// ─── IMAGE ASSETS ────────────────────────────────────────
+const IMG_BASE = './images';
+const PORTRAITS = {
+  'Mahmoud':'mahmoud.png','Hazem':'hazem.png','Loza':'loza.png','Nancy':'nancy.png',
+  'Walaa':'walaa.png','Asser':'asser.png','Omar':'omar.png','Engy':'engy.png',
+  'Sawsan':'sawsan.png','Gendia':'gendia.png','Esraa':'esraa.png',
+  'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png',
+};
+const TEAM_BADGES = {1:'whale.png',2:'lion.png',3:'tiger.png'};
+const TEAM_COLORS = {1:'var(--whale)',2:'var(--lion)',3:'var(--tiger)',4:'var(--ali)',5:'var(--meram)',6:'var(--sayeda)'};
+function portraitUrl(name){ const key=Object.keys(PORTRAITS).find(k=>k.toLowerCase()===(name||'').trim().toLowerCase()); return key? `${IMG_BASE}/portraits/${PORTRAITS[key]}` : null; }
+function badgeUrl(teamIdx){ return TEAM_BADGES[teamIdx]? `${IMG_BASE}/badges/${TEAM_BADGES[teamIdx]}` : null; }
+   // <-- paste your Google Apps Script Web App URL here
 let entries = [];
 let soundEnabled = true;
 const OVERSEAS_PEOPLE = ['Gendia','Esraa Khaled'];
@@ -1438,13 +1470,25 @@ function showNewDealOverlay(entry, teamName) {
   const overlay = document.getElementById('nd-overlay');
   document.getElementById('nd-type-label').textContent = TYPE_LABELS[entry.status] || 'New Entry';
   document.getElementById('nd-client').textContent = entry.client;
-  // team-matched animal/vehicle visual
+  // Build hero visual: portrait + team badge
+  const pUrl = portraitUrl(entry.salesperson);
+  const bUrl = badgeUrl(parseInt(entry.team));
+  let heroHtml = '';
+  if (pUrl) {
+    heroHtml += `<img src="${pUrl}" class="portrait-xl" alt="${esc(entry.salesperson)}">`;
+  }
+  if (bUrl) {
+    heroHtml += `<img src="${bUrl}" class="team-badge-img" alt="${esc(teamName)}">`;
+  }
+  const heroWrap = document.getElementById('nd-hero-wrap');
+  if (heroWrap) heroWrap.innerHTML = heroHtml;
+  // Fallback emoji
   const ANIMAL = {1:'🐋',2:'🦁',3:'🐯',4:'🏎️',5:'🐱',6:'💰'};
   const _k = (teamName||'').toLowerCase();
   let _emoji = ANIMAL[parseInt(entry.team)] || (_k.includes('lion')?'🦁':_k.includes('tiger')?'🐯':_k.includes('ali')?'🏎️':_k.includes('meram')?'🐱':_k.includes('sayeda')?'💰':'🐋');
   if (entry.status==='confirmed' && isOverseas(entry.salesperson)) _emoji='🌍';
   const animalEl = document.getElementById('nd-animal');
-  animalEl.textContent = _emoji;
+  if (!pUrl) { animalEl.textContent = _emoji; animalEl.style.display='block'; } else { animalEl.style.display='none'; }
   animalEl.className = 'nd-animal' + (/🦁|🐯/.test(_emoji) ? ' roar' : '');
   void animalEl.offsetWidth; // restart animation
   document.getElementById('nd-meta').textContent = entry.salesperson + ' · ' + teamName;
@@ -1553,6 +1597,9 @@ function updateCEO(confirmedToday) {
 
 // ─── RENDER ──────────────────────────────────────────────
 function renderAll() {
+  // Last updated timestamp
+  const now = new Date();
+  document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const names = getTeamNames();
   const today = entries.filter(isToday);
   const thisWeek = entries.filter(isThisWeek);
@@ -1641,13 +1688,17 @@ function renderAll() {
     personMap[e.salesperson].count++;
   });
   const people = Object.entries(personMap);
+  const starWrap = document.getElementById('star-portrait-wrap');
   if (people.length > 0) {
     const star = people.sort((a,b)=>b[1].count-a[1].count)[0];
     document.getElementById('star-name').textContent = star[0];
     document.getElementById('star-sub').textContent = `${star[1].count} confirmed shipment${star[1].count!==1?'s':''} today · ${names[parseInt(star[1].team)-1]}`;
+    const spUrl = portraitUrl(star[0]);
+    starWrap.innerHTML = spUrl ? `<img src="${spUrl}" class="portrait" alt="${esc(star[0])}">` : '';
   } else {
     document.getElementById('star-name').textContent = '—';
     document.getElementById('star-sub').textContent = 'Most confirmed shipments today';
+    starWrap.innerHTML = '';
   }
 
   // Render lists
