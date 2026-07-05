@@ -1505,7 +1505,8 @@ function updateDebugPanel(){
   el.innerHTML = `
     <div>📅 Browser date: <b>${new Date().toString()}</b></div>
     <div>🔑 todayKey(): <b>${todayKey()}</b></div>
-    <div>⏱️ timeRange: <b>${timeRange}</b></div>
+    <div>🌐 Raw status: <b>${window._rawStatus || '?'}</b></div>
+    <div>🌐 Raw body preview: <b>${(window._rawBodyPreview || '').slice(0,120)}</b></div>
     <div>🌐 Raw API count: <b>${window._rawDataCount || '?'}</b></div>
     <div>🌐 Raw sample: <b>${JSON.stringify(window._rawDataSample || []).slice(0,120)}</b></div>
     <div>📊 Total entries: <b>${entries.length}</b></div>
@@ -2033,13 +2034,18 @@ let _seenKeys = null;
 async function fetchData(){
   try{
     const res = await fetch(API_URL, { cache: 'no-store' });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    if(!Array.isArray(data)) throw new Error('Payload is not an array');
+    const statusText = res.status + ' ' + res.statusText;
+    const bodyText = await res.text();
+    let data;
+    try { data = JSON.parse(bodyText); } catch(e) { data = null; }
     
-    // Debug: store raw sample for diagnostics
-    window._rawDataSample = data.slice(0, 3);
-    window._rawDataCount = data.length;
+    // Debug: store raw info for diagnostics
+    window._rawStatus = statusText;
+    window._rawBodyPreview = bodyText.slice(0, 200);
+    window._rawDataCount = data ? data.length : 'parse-fail';
+    window._rawDataSample = data ? data.slice(0, 3) : [];
+    
+    if(!Array.isArray(data)) throw new Error('Payload is not an array: ' + typeof data + ' | ' + bodyText.slice(0,100));
     
     const mapped = data.map(parseRow).filter(e=>e.status);
     mapped.sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp)); // newest first
