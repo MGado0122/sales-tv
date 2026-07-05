@@ -1506,6 +1506,8 @@ function updateDebugPanel(){
     <div>📅 Browser date: <b>${new Date().toString()}</b></div>
     <div>🔑 todayKey(): <b>${todayKey()}</b></div>
     <div>⏱️ timeRange: <b>${timeRange}</b></div>
+    <div>🌐 Raw API count: <b>${window._rawDataCount || '?'}</b></div>
+    <div>🌐 Raw sample: <b>${JSON.stringify(window._rawDataSample || []).slice(0,120)}</b></div>
     <div>📊 Total entries: <b>${entries.length}</b></div>
     <div>📊 Today entries: <b>${todayCount}</b></div>
     <div>📊 Week entries: <b>${weekCount}</b></div>
@@ -2034,6 +2036,11 @@ async function fetchData(){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     if(!Array.isArray(data)) throw new Error('Payload is not an array');
+    
+    // Debug: store raw sample for diagnostics
+    window._rawDataSample = data.slice(0, 3);
+    window._rawDataCount = data.length;
+    
     const mapped = data.map(parseRow).filter(e=>e.status);
     mapped.sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp)); // newest first
 
