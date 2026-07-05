@@ -1509,6 +1509,10 @@ function updateDebugPanel(){
     <div>🌐 Raw body preview: <b>${(window._rawBodyPreview || '').slice(0,120)}</b></div>
     <div>🌐 Raw API count: <b>${window._rawDataCount || '?'}</b></div>
     <div>🌐 Raw sample: <b>${JSON.stringify(window._rawDataSample || []).slice(0,120)}</b></div>
+    <div>🔧 Fetch step: <b>${window._fetchStep || '?'}</b></div>
+    <div>🔧 Fetch started: <b>${window._fetchDataStarted || '?'}</b></div>
+    <div>🔧 Fetch completed: <b>${window._fetchDataCompleted || '?'}</b></div>
+    <div>🔧 Fetch error: <b>${window._fetchDataError || '?'}</b></div>
     <div>📊 Total entries: <b>${entries.length}</b></div>
     <div>📊 Today entries: <b>${todayCount}</b></div>
     <div>📊 Week entries: <b>${weekCount}</b></div>
@@ -2032,14 +2036,19 @@ function rowKey(e){ return [e.day,e.status,e.client,e.salesperson,e.team,e.type,
 let _seenKeys = null;
 
 async function fetchData(){
+  window._fetchDataStarted = true;
   try{
+    window._fetchStep = 'before-fetch';
     const res = await fetch(API_URL, { cache: 'no-store' });
+    window._fetchStep = 'after-fetch';
     const statusText = res.status + ' ' + res.statusText;
+    window._fetchStep = 'before-text';
     const bodyText = await res.text();
+    window._fetchStep = 'after-text';
     let data;
     try { data = JSON.parse(bodyText); } catch(e) { data = null; }
     
-    // Debug: store raw info for diagnostics
+    window._fetchStep = 'after-parse';
     window._rawStatus = statusText;
     window._rawBodyPreview = bodyText.slice(0, 200);
     window._rawDataCount = data ? data.length : 'parse-fail';
@@ -2050,7 +2059,6 @@ async function fetchData(){
     const mapped = data.map(parseRow).filter(e=>e.status);
     mapped.sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp)); // newest first
 
-    // Celebrate brand-new rows from today (skip the very first load)
     const keys = new Set(mapped.map(rowKey));
     if(_seenKeys){
       const fresh = mapped.filter(e=>!_seenKeys.has(rowKey(e)) && isToday(e));
@@ -2060,10 +2068,14 @@ async function fetchData(){
 
     entries = mapped;
     lastFetchError = '';
+    window._fetchDataCompleted = true;
+    window._fetchStep = 'done';
     renderAll();
     updateDebugPanel();
   }catch(err){
     lastFetchError = err.message;
+    window._fetchDataError = err.message;
+    window._fetchStep = 'error: ' + err.message;
     updateDebugPanel();
     console.warn('[dashboard] fetch failed — keeping previous data:', err.message);
   }
