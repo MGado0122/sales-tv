@@ -579,6 +579,7 @@
     <button onclick="toggleSoundboard()" id="sbBtn" title="Soundboard" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎛️</button>
     <button onclick="openSummary()" id="summaryBtn" title="Show Summary" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">📊</button>
     <button onclick="toggleSound()" id="soundBtn" title="Toggle Sound" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">🔊</button>
+    <button onclick="toggleDebug()" id="debugBtn" title="Debug Info" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">🐛</button>
     <button onclick="toggleFullView()" id="fullViewBtn" title="Full View" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid #0a8f8f;color:#0cbfbf;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">⛶</button>
   </div>
 </header>
@@ -1485,6 +1486,35 @@ function updateClock() {
 }
 setInterval(updateClock, 1000); updateClock();
 
+// ─── DEBUG PANEL ─────────────────────────────────────────
+let debugVisible = false;
+let lastFetchError = '';
+function toggleDebug(){
+  debugVisible = !debugVisible;
+  const panel = document.getElementById('debug-panel');
+  panel.style.display = debugVisible ? 'block' : 'none';
+  updateDebugPanel();
+}
+function updateDebugPanel(){
+  const el = document.getElementById('debug-content');
+  if (!el) return;
+  const todayCount = entries.filter(isToday).length;
+  const weekCount = entries.filter(isThisWeek).length;
+  const monthCount = entries.filter(isThisMonth).length;
+  const sample = entries.slice(0, 3).map(e => `${e.day} ${e.status}`).join(', ');
+  el.innerHTML = `
+    <div>📅 Browser date: <b>${new Date().toString()}</b></div>
+    <div>🔑 todayKey(): <b>${todayKey()}</b></div>
+    <div>⏱️ timeRange: <b>${timeRange}</b></div>
+    <div>📊 Total entries: <b>${entries.length}</b></div>
+    <div>📊 Today entries: <b>${todayCount}</b></div>
+    <div>📊 Week entries: <b>${weekCount}</b></div>
+    <div>📊 Month entries: <b>${monthCount}</b></div>
+    <div>📝 Sample: <b>${sample || 'none'}</b></div>
+    <div style="color:${lastFetchError ? 'var(--red)' : 'var(--green)'};">🌐 Last fetch: <b>${lastFetchError || 'OK'}</b></div>
+  `;
+}
+
 // ─── HELPERS ─────────────────────────────────────────────
 function _localYMD(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function todayKey() { return _localYMD(new Date()); }   // local calendar date, rolls at local midnight
@@ -1496,7 +1526,7 @@ function isToday(e) { return e.day === todayKey(); }
 function isThisWeek(e) { return e.week === weekKey(new Date()); }
 function isThisMonth(e) {
   const now = new Date();
-  const d = new Date(e.ts);
+  const d = new Date(e.timestamp);
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 function fmt(n) {
@@ -1522,6 +1552,7 @@ function setTimeRange(range) {
     btn.classList.toggle('active', btn.dataset.range === range);
   });
   renderAll();
+  updateDebugPanel();
 }
 function filterByRange(entriesArr) {
   if (timeRange === 'week') return entriesArr.filter(isThisWeek);
@@ -1814,6 +1845,7 @@ function renderAll() {
   renderList('list-cancelled', cancelledToday, 'cancelled',   names, 'v-red');
   renderList('list-mega',      megaAll,        'mega',        names, 'v-purple', true);
   emojify();
+  updateDebugPanel();
 }
 
 const EMPTY = {
@@ -2014,9 +2046,12 @@ async function fetchData(){
     _seenKeys = keys;
 
     entries = mapped;
+    lastFetchError = '';
     renderAll();
+    updateDebugPanel();
   }catch(err){
-    // Quiet error handling: keep the last good data on screen, just log it.
+    lastFetchError = err.message;
+    updateDebugPanel();
     console.warn('[dashboard] fetch failed — keeping previous data:', err.message);
   }
 }
@@ -2048,6 +2083,11 @@ emojify();
 fetchData();                       // first pull
 setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
 </script>
+<div id="debug-panel" style="display:none;position:fixed;bottom:10px;right:10px;z-index:1000;background:rgba(22,27,34,0.95);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:12px;font-family:monospace;color:var(--text);max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+  <div style="font-weight:700;margin-bottom:8px;color:var(--teal);border-bottom:1px solid var(--border);padding-bottom:6px;">🔍 Diagnostics</div>
+  <div id="debug-content"></div>
+</div>
+
 <div id="mtv-gate" style="position:fixed;inset:0;z-index:999999;background:#0d1117;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;">
   <div style="text-align:center;color:#e6edf3;">
     <div style="font-size:22px;font-weight:800;letter-spacing:.04em;margin-bottom:6px;color:#00A0AA;">MEILS Sales Command Center</div>
