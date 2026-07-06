@@ -1513,6 +1513,9 @@ function updateDebugPanel(){
     <div>🔧 Fetch started: <b>${window._fetchDataStarted || '?'}</b></div>
     <div>🔧 Fetch completed: <b>${window._fetchDataCompleted || '?'}</b></div>
     <div>🔧 Fetch error: <b>${window._fetchDataError || '?'}</b></div>
+    <div>🔧 fetchData defined: <b>${typeof fetchData}</b></div>
+    <div>🔧 entries defined: <b>${typeof entries}</b></div>
+    <div>🔧 Init step: <b>${window._initStep || '?'}</b></div>
     <div>📊 Total entries: <b>${entries.length}</b></div>
     <div>📊 Today entries: <b>${todayCount}</b></div>
     <div>📊 Week entries: <b>${weekCount}</b></div>
@@ -2080,6 +2083,7 @@ async function fetchData(){
     console.warn('[dashboard] fetch failed — keeping previous data:', err.message);
   }
 }
+window.fetchData = fetchData; // expose for debug
 
 function teamSound(entry, tname){
   if (isOverseas(entry.salesperson)) overseasWin();          // 🌍 overseas jet + voice
@@ -2103,9 +2107,20 @@ function celebrate(entry){
 
 // ─── INIT ────────────────────────────────────────────────
 ['click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function _u(){ try{ getCtx().resume(); }catch(e){} try{ if(window.speechSynthesis){ const w=new SpeechSynthesisUtterance(' '); w.volume=0; speechSynthesis.speak(w); } }catch(e){} }, { once:true }); });
+window._initStep = 'before-renderAll';
 renderAll();                       // paint empty shell immediately
+window._initStep = 'after-renderAll';
 emojify();
-fetchData();                       // first pull
+window._initStep = 'after-emojify';
+window._initStep = 'before-fetchData';
+try {
+  fetchData();                       // first pull
+  window._initStep = 'after-fetchData';
+} catch(e) {
+  window._initStep = 'fetchData-error: ' + e.message;
+  lastFetchError = e.message;
+  updateDebugPanel();
+}
 setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
 </script>
 <div id="debug-panel" style="display:none;position:fixed;bottom:10px;right:10px;z-index:1000;background:rgba(22,27,34,0.95);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:12px;font-family:monospace;color:var(--text);max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
