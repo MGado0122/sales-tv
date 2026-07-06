@@ -927,7 +927,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyV6mi-ERPNZmXng1_UQqnD
 // ─── IMAGE ASSETS ────────────────────────────────────────
 const IMG_BASE = './images';
 const PORTRAITS = {
-  'Mahmoud':'mahmoud.png','Hazem':'hazem.png','Loza':'loza.png','Yasmine':'loza.png','Nancy':'nancy.png',
+  'Mahmoud':'mahmoud.png','Hazem':'hazem.png','Hazzem':'hazem.png','Loza':'loza.png','Yasmine':'loza.png','Nancy':'nancy.png',
   'Walaa':'walaa.png','Asser':'asser.png','Omar':'omar.png','Engy':'engy.png',
   'Sawsan':'sawsan.png','Gendia':'gendia.png','Esraa':'esraa.png',
   'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png',
@@ -1519,6 +1519,8 @@ function updateDebugPanel(){
     <div>🔧 Init step: <b>${window._initStep || '?'}</b></div>
     <div>🔧 Render step: <b>${window._renderStep || '?'}</b></div>
     <div style="color:var(--red);">🔧 Render error: <b>${window._renderAllError || 'none'}</b></div>
+    <div>🎉 Fresh celebrated: <b>${window._freshCount || 0}</b></div>
+    <div>🎉 Fresh keys: <b>${(window._freshKeys || []).slice(0,3).join(', ') || 'none'}</b></div>
     <div>📊 Total entries: <b>${entries.length}</b></div>
     <div>📊 Today entries: <b>${todayCount}</b></div>
     <div>📊 Week entries: <b>${weekCount}</b></div>
@@ -2035,8 +2037,22 @@ function parseRow(r){
     week:        valid ? weekKey(ts) : ''
   };
 }
-function rowKey(e){ return [e.day,e.status,e.client,e.salesperson,e.team,e.type,e.notes].join('|'); }
+function rowKey(e){ return [e.day,e.status,e.client,e.salesperson,e.team].join('|'); }
+
+// Persist seen keys across page refreshes so celebrations don't repeat
+const _SEEN_KEYS_STORAGE = 'mtv_seen_keys';
 let _seenKeys = null;
+try {
+  const stored = sessionStorage.getItem(_SEEN_KEYS_STORAGE);
+  if (stored) _seenKeys = new Set(JSON.parse(stored));
+} catch(e) {}
+
+const _CELEBRATED_STORAGE = 'mtv_celebrated';
+let _celebrated = new Set();
+try {
+  const stored = sessionStorage.getItem(_CELEBRATED_STORAGE);
+  if (stored) _celebrated = new Set(JSON.parse(stored));
+} catch(e) {}
 
 async function fetchData(){
   window._fetchDataStarted = true;
@@ -2064,10 +2080,17 @@ async function fetchData(){
 
     const keys = new Set(mapped.map(rowKey));
     if(_seenKeys){
-      const fresh = mapped.filter(e=>!_seenKeys.has(rowKey(e)) && isToday(e));
-      fresh.slice(0,5).reverse().forEach((e,i)=> setTimeout(()=>celebrate(e), i*3500));
+      const fresh = mapped.filter(e=>!_seenKeys.has(rowKey(e)) && isToday(e) && !_celebrated.has(rowKey(e)));
+      window._freshCount = fresh.length;
+      window._freshKeys = fresh.map(rowKey);
+      fresh.slice(0,5).reverse().forEach((e,i)=> {
+        _celebrated.add(rowKey(e));
+        setTimeout(()=>celebrate(e), i*3500);
+      });
     }
     _seenKeys = keys;
+    try { sessionStorage.setItem(_SEEN_KEYS_STORAGE, JSON.stringify([...keys])); } catch(e) {}
+    try { sessionStorage.setItem(_CELEBRATED_STORAGE, JSON.stringify([..._celebrated])); } catch(e) {}
 
     entries = mapped;
     lastFetchError = '';
