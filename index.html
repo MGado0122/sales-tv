@@ -576,6 +576,7 @@
   </div>
   <div class="header-right">
     <span id="clock"></span>
+    <span id="last-updated" class="last-updated"></span>
     <button onclick="toggleSoundboard()" id="sbBtn" title="Soundboard" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎛️</button>
     <button onclick="openSummary()" id="summaryBtn" title="Show Summary" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">📊</button>
     <button onclick="toggleSound()" id="soundBtn" title="Toggle Sound" style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;">🔊</button>
@@ -676,6 +677,11 @@
       <button class="time-toggle-btn" data-range="week" onclick="setTimeRange('week')">This Week</button>
       <button class="time-toggle-btn" data-range="month" onclick="setTimeRange('month')">This Month</button>
     </div>
+  </div>
+  <div class="time-toggle" id="time-toggle" style="margin-bottom:16px;">
+    <button class="time-toggle-btn active" id="range-today" onclick="setTimeRange('today')">Today</button>
+    <button class="time-toggle-btn"        id="range-week"  onclick="setTimeRange('week')">This Week</button>
+    <button class="time-toggle-btn"        id="range-month" onclick="setTimeRange('month')">This Month</button>
   </div>
   <div class="kpi-row">
     <div class="kpi-card kpi-c1">
