@@ -1516,6 +1516,8 @@ function updateDebugPanel(){
     <div>🔧 fetchData defined: <b>${typeof fetchData}</b></div>
     <div>🔧 entries defined: <b>${typeof entries}</b></div>
     <div>🔧 Init step: <b>${window._initStep || '?'}</b></div>
+    <div>🔧 Render step: <b>${window._renderStep || '?'}</b></div>
+    <div style="color:var(--red);">🔧 Render error: <b>${window._renderAllError || 'none'}</b></div>
     <div>📊 Total entries: <b>${entries.length}</b></div>
     <div>📊 Today entries: <b>${todayCount}</b></div>
     <div>📊 Week entries: <b>${weekCount}</b></div>
@@ -1738,28 +1740,122 @@ function updateCEO(confirmedToday) {
 
 // ─── RENDER ──────────────────────────────────────────────
 function renderAll() {
-  // Last updated timestamp
-  const now = new Date();
-  document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const names = getTeamNames();
-  const today = filterByRange(entries);
-  const thisWeek = entries.filter(isThisWeek);
-
-  const byStatus = (s, fromToday) => {
-    const pool = fromToday ? today : entries;
-    return pool.filter(e=>e.status===s);
-  };
-
-  const confirmedToday = today.filter(e=>e.status==='confirmed');
-  const cancelledToday = today.filter(e=>e.status==='cancelled');
-  const rfqToday       = today.filter(e=>e.status==='rfq');
-  const oppAll         = today.filter(e=>e.status==='opportunity');   // today only
-  const megaAll        = today.filter(e=>e.status==='mega');           // today only
-  const confirmedWeek  = thisWeek.filter(e=>e.status==='confirmed');
-  const megaToday      = today.filter(e=>e.status==='mega');
-  const megaWeek       = thisWeek.filter(e=>e.status==='mega');
-  const winToday       = confirmedToday.concat(megaToday);   // confirmed + mega
-  const winWeek        = confirmedWeek.concat(megaWeek);
+  try {
+    window._renderStep = 'start';
+    const now = new Date();
+    document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    window._renderStep = 'after-last-updated';
+    const names = getTeamNames();
+    window._renderStep = 'after-getTeamNames';
+    const today = filterByRange(entries);
+    window._renderStep = 'after-filterByRange';
+    const thisWeek = entries.filter(isThisWeek);
+    window._renderStep = 'after-thisWeek';
+    const byStatus = (s, fromToday) => {
+      const pool = fromToday ? today : entries;
+      return pool.filter(e=>e.status===s);
+    };
+    const confirmedToday = today.filter(e=>e.status==='confirmed');
+    const cancelledToday = today.filter(e=>e.status==='cancelled');
+    const rfqToday       = today.filter(e=>e.status==='rfq');
+    const oppAll         = today.filter(e=>e.status==='opportunity');   // today only
+    const megaAll        = today.filter(e=>e.status==='mega');           // today only
+    const confirmedWeek  = thisWeek.filter(e=>e.status==='confirmed');
+    const megaToday      = today.filter(e=>e.status==='mega');
+    const megaWeek       = thisWeek.filter(e=>e.status==='mega');
+    const winToday       = confirmedToday.concat(megaToday);   // confirmed + mega
+    const winWeek        = confirmedWeek.concat(megaWeek);
+    window._renderStep = 'after-calculations';
+    updateCEO(winToday.length);
+    window._renderStep = 'after-CEO';
+    const rangeLbl = rangeLabel();
+    document.getElementById('kpi-rfq').textContent        = rfqToday.length;
+    document.getElementById('kpi-cancelled').textContent  = cancelledToday.length;
+    document.getElementById('kpi-opp').textContent        = oppAll.length;
+    document.getElementById('kpi-mega').textContent       = megaAll.length;
+    document.getElementById('kpi-confirmed').textContent  = winToday.length;
+    document.getElementById('kpi-confirmed-sub').innerHTML = megaToday.length ? `${rangeLbl} · incl. <span style="color:#c9a6ff;font-weight:700;">🌟 ${megaToday.length} mega</span>` : rangeLbl;
+    document.getElementById('kpi-rev').textContent        = winToday.length;
+    window._renderStep = 'after-KPIs';
+    document.getElementById('badge-rfq').textContent       = rfqToday.length;
+    document.getElementById('badge-confirmed').textContent  = `${winToday.length} ${rangeLbl.toLowerCase()}`;
+    document.getElementById('badge-opp').textContent        = oppAll.length;
+    document.getElementById('badge-cancelled').textContent  = cancelledToday.length;
+    document.getElementById('badge-mega').textContent       = megaAll.length;
+    window._renderStep = 'after-badges';
+    const ovToday = today.filter(e=>isOverseas(e.salesperson));
+    document.getElementById('ov-rfq').textContent       = ovToday.filter(e=>e.status==='rfq').length;
+    document.getElementById('ov-confirmed').textContent = ovToday.filter(e=>e.status==='confirmed').length;
+    document.getElementById('ov-opp').textContent       = ovToday.filter(e=>e.status==='opportunity').length;
+    document.getElementById('ov-cancelled').textContent = ovToday.filter(e=>e.status==='cancelled').length;
+    window._renderStep = 'after-overseas';
+    const tScores = [1,2,3,4,5,6].map(t=>({
+      t,
+      count: winToday.filter(e=>effTeam(e)==t).length,
+      rev: winToday.filter(e=>effTeam(e)==t).reduce((s,e)=>s+e.value,0)
+    }));
+    const maxC = Math.max(...tScores.map(x=>x.count),1);
+    tScores.forEach(ts => {
+      document.getElementById(`bar-t${ts.t}`).style.height = Math.round(ts.count/maxC*100)+'%';
+      document.getElementById(`bar-t${ts.t}-count`).textContent = ts.count;
+    });
+    const top = tScores.reduce((a,b)=> b.count>a.count||(b.count===a.count&&b.rev>a.rev)?b:a);
+    const sorted = tScores.slice().sort((a,b)=>b.count-a.count||b.rev-a.rev);
+    if (sorted[0].count > 0 && sorted[1].count > 0 && (sorted[0].count - sorted[1].count) <= 2) {
+      showBattle(sorted[0].t, sorted[1].t);
+    }
+    const prevTopName = document.getElementById('top-team-name').textContent;
+    if (top.count>0) {
+      const newTopName = names[top.t-1];
+      document.getElementById('top-team-name').textContent = newTopName;
+      document.getElementById('top-team-stats').textContent = `${top.count} confirmed shipment${top.count!==1?'s':''} ${rangeLbl.toLowerCase()}`;
+      if (prevTopName !== newTopName || window._lastTopCount !== top.count) {
+        const banner = document.querySelector('.top-team-banner');
+        banner.classList.remove('banner-flash');
+        void banner.offsetWidth;
+        banner.classList.add('banner-flash');
+        const winBar = document.getElementById('bar-t' + top.t);
+        winBar.classList.remove('bar-updated');
+        void winBar.offsetWidth;
+        winBar.classList.add('bar-updated');
+        window._lastTopCount = top.count;
+      }
+    } else {
+      document.getElementById('top-team-name').textContent = 'No data yet';
+      document.getElementById('top-team-stats').textContent = 'Add confirmed shipments to see rankings';
+    }
+    window._renderStep = 'after-bars';
+    const personMap = {};
+    winToday.forEach(e => {
+      if (!personMap[e.salesperson]) personMap[e.salesperson] = {count:0, team:e.team};
+      personMap[e.salesperson].count++;
+    });
+    const people = Object.entries(personMap);
+    const starWrap = document.getElementById('star-portrait-wrap');
+    if (people.length > 0) {
+      const star = people.sort((a,b)=>b[1].count-a[1].count)[0];
+      document.getElementById('star-name').textContent = star[0];
+      document.getElementById('star-sub').textContent = `${star[1].count} confirmed shipment${star[1].count!==1?'s':''} ${rangeLbl.toLowerCase()} · ${names[parseInt(star[1].team)-1]}`;
+      const spUrl = portraitUrl(star[0]);
+      starWrap.innerHTML = spUrl ? `<img src="${spUrl}" class="portrait" alt="${esc(star[0])}">` : '';
+    } else {
+      document.getElementById('star-name').textContent = '—';
+      document.getElementById('star-sub').textContent = 'Most confirmed shipments today';
+      starWrap.innerHTML = '';
+    }
+    window._renderStep = 'after-star';
+    renderList('list-rfq',       rfqToday,       'rfq',         names, 'v-teal');
+    renderList('list-confirmed', confirmedToday, 'confirmed',   names, 'v-green');
+    renderList('list-opp',       oppAll,         'opportunity', names, 'v-yellow');
+    renderList('list-cancelled', cancelledToday, 'cancelled',   names, 'v-red');
+    renderList('list-mega',      megaAll,        'mega',        names, 'v-purple', true);
+    emojify();
+    window._renderStep = 'done';
+  } catch(err) {
+    window._renderAllError = err.message + ' at ' + (window._renderStep || '?');
+    console.error('[dashboard] renderAll error:', err);
+  }
+}
 
   // CEO
   updateCEO(winToday.length);
