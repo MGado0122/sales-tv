@@ -671,14 +671,7 @@
   </div>
 
   <!-- KPI CARDS -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <div class="time-toggle">
-      <button class="time-toggle-btn active" data-range="today" onclick="setTimeRange('today')">Today</button>
-      <button class="time-toggle-btn" data-range="week" onclick="setTimeRange('week')">This Week</button>
-      <button class="time-toggle-btn" data-range="month" onclick="setTimeRange('month')">This Month</button>
-    </div>
-  </div>
-  <div class="time-toggle" id="time-toggle" style="margin-bottom:16px;display:flex;gap:8px;"><button class="time-toggle-btn active" id="range-today" onclick="setTimeRange('today')">Today</button><button class="time-toggle-btn" id="range-week" onclick="setTimeRange('week')">This Week</button><button class="time-toggle-btn" id="range-month" onclick="setTimeRange('month')">This Month</button></div>
+    <div class="time-toggle" id="time-toggle" style="margin-bottom:16px;display:flex;gap:8px;"><button class="time-toggle-btn active" id="range-today" onclick="setTimeRange('today')">Today</button><button class="time-toggle-btn" id="range-week" onclick="setTimeRange('week')">This Week</button><button class="time-toggle-btn" id="range-month" onclick="setTimeRange('month')">This Month</button></div>
 <div class="kpi-row">
     <div class="kpi-card kpi-c1">
       <div class="label">RFQs Today</div>
@@ -2131,12 +2124,12 @@ function celebrate(entry){
   try{ showNewDealOverlay(entry, tname); }catch(e){}
   const tk = teamKey(tname, entry);
   switch (entry.status) {
-    case 'rfq':         playAudio('rfq'); break;
+    case 'rfq': playAudio('rfq'); break;
     case 'opportunity': playAudio('opportunity'); break;
-    case 'cancelled':   playAudio('cancel'); break;
-    case 'mega':        playThen(tk,'mega'); break;
+    case 'cancelled': playAudio('cancel'); break;
+    case 'mega': playThen(tk,'mega'); break;
     case 'confirmed':
-    default:            playThen(tk,'confirmed'); break;
+    default: playThen(tk,'confirmed'); break;
   }
 }
 
