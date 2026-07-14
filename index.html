@@ -678,7 +678,8 @@
       <button class="time-toggle-btn" data-range="month" onclick="setTimeRange('month')">This Month</button>
     </div>
   </div>
-  <div class="kpi-row">
+  <div class="time-toggle" id="time-toggle" style="margin-bottom:16px;display:flex;gap:8px;"><button class="time-toggle-btn active" id="range-today" onclick="setTimeRange('today')">Today</button><button class="time-toggle-btn" id="range-week" onclick="setTimeRange('week')">This Week</button><button class="time-toggle-btn" id="range-month" onclick="setTimeRange('month')">This Month</button></div>
+<div class="kpi-row">
     <div class="kpi-card kpi-c1">
       <div class="label">RFQs Today</div>
       <div class="value" id="kpi-rfq">0</div>
@@ -939,6 +940,16 @@ function badgeUrl(teamIdx){ return TEAM_BADGES[teamIdx]? `${IMG_BASE}/badges/${T
    // <-- paste your Google Apps Script Web App URL here
 let entries = [];
 let soundEnabled = true;
+const SND={whale:'Whale.mp3',lion:'Lion.mp3',tiger:'Tiger.mp3',car:'Car.mp3',cat:'Cat.mp3',cash:'Cash.mp3',confirmed:'Confimred.mp3',mega:'Mega.mp3',opportunity:'Opportunity.mp3',rfq:'New RFQ.mp3',cancel:'Cancel.mp3'};
+const _pool={};
+function preloadAudio(){for(const k in SND){try{const a=new Audio(encodeURI(SND[k]));a.preload='auto';a.load();_pool[k]=a;}catch(e){}}}
+let _auUnlocked=false;
+function unlockAudio(){if(_auUnlocked)return;_auUnlocked=true;for(const k in _pool){const a=_pool[k];a.muted=true;a.play().then(()=>{a.pause();a.currentTime=0;a.muted=false;}).catch(()=>{a.muted=false;});}}
+function playAudio(key){if(!soundEnabled)return;const s=SND[key];if(!s)return;const a=new Audio(encodeURI(s));a.volume=1;a.play().catch(()=>{});}
+function playThen(k1,k2){if(!soundEnabled)return;let a;try{a=new Audio(encodeURI(SND[k1]));}catch(e){return playAudio(k2);}a.volume=1;a.addEventListener('ended',()=>playAudio(k2),{once:true});a.play().catch(()=>playAudio(k2));}
+function teamKey(tname,entry){if(isOverseas(entry.salesperson))return 'tiger';const k=(tname||'').toLowerCase();if(k.includes('lion'))return 'lion';if(k.includes('tiger'))return 'tiger';if(k.includes('ali'))return 'car';if(k.includes('meram'))return 'cat';if(k.includes('sayeda'))return 'cash';return 'whale';}
+preloadAudio();
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));
 const OVERSEAS_PEOPLE = ['Gendia','Esraa Khaled'];
 function isOverseas(n){ return OVERSEAS_PEOPLE.some(p=>p.toLowerCase()===(n||'').toLowerCase()); }
 function effTeam(e){ return isOverseas(e.salesperson) ? '3' : String(e.team); }
@@ -2116,15 +2127,16 @@ function teamSound(entry, tname){
 function celebrate(entry){
   const names = getTeamNames();
   const tname = names[parseInt(effTeam(entry))-1] || names[parseInt(entry.team)-1] || '';
-  try { getCtx().resume(); } catch(e){}                 // make sure audio is unlocked
-  try{ showNewDealOverlay(entry, tname); }catch(e){}    // shows action label + team slogan on screen
+  try{ unlockAudio(); }catch(e){}
+  try{ showNewDealOverlay(entry, tname); }catch(e){}
+  const tk = teamKey(tname, entry);
   switch (entry.status) {
-    case 'rfq':         speakRFQ();        break;        // RFQ siren + voice
-    case 'opportunity': oppAlert();        break;        // opportunity fanfare + voice
-    case 'cancelled':   speakCancelled();  break;        // loss cue + voice
-    case 'mega':        playCheer(); setTimeout(()=>teamSound(entry, tname), 600); break; // cheer + team sound
+    case 'rfq':         playAudio('rfq'); break;
+    case 'opportunity': playAudio('opportunity'); break;
+    case 'cancelled':   playAudio('cancel'); break;
+    case 'mega':        playThen(tk,'mega'); break;
     case 'confirmed':
-    default:            teamSound(entry, tname);         // team signature sound
+    default:            playThen(tk,'confirmed'); break;
   }
 }
 
