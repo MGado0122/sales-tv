@@ -2183,5 +2183,15 @@ setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
 })();
 </script>
 
+
+<div id="au-gate" style="position:fixed;inset:0;z-index:999998;background:rgba(3,63,71,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-family:Inter,system-ui,sans-serif;text-align:center;">
+  <div style="font-size:76px;line-height:1;">🔊</div>
+  <div style="font-size:28px;font-weight:800;margin-top:14px;">Tap to Enable Sound</div>
+  <div style="font-size:15px;color:#9aa7b8;margin-top:8px;">One tap — voices live all day</div>
+</div>
+<script>
+(function(){var g=document.getElementById('au-gate');if(!g)return;function go(){try{if(window.unlockAudio)unlockAudio();}catch(e){}try{var a=new Audio(encodeURI('Confimred.mp3'));a.volume=1;a.play().catch(function(){});}catch(e){}g.remove();}g.addEventListener('click',go);g.addEventListener('touchstart',go);})();
+</script>
+
 </body>
 </html>
