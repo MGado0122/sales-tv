@@ -2502,6 +2502,41 @@ setInterval(fetchData, 60*1000); // auto-refresh every 60 seconds
 setInterval(checkStale, 30*1000); // recheck staleness independent of fetch success/failure
 fetchHistory(); // yesterday-comparison — no-ops silently if backend isn't updated yet
 setInterval(fetchHistory, 10*60*1000); // retry periodically in case History tab appears later in the day
+
+// ─── AUTO-REFRESH (daily reset + auto-pickup of new deploys) ─────────────
+// A plain location.reload() can still be served from cache (this is exactly
+// what happened on the TV after a deploy — GitHub Pages caches responses for
+// 10 min, and TV browsers are notorious for not revalidating on a normal
+// reload). Appending a changing query param forces a real network fetch.
+function forceFreshReload() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('_r', Date.now());
+  window.location.href = url.toString();
+}
+
+// Reload once daily at 00:01 local time, resetting all daily/session state.
+function scheduleMidnightReload() {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 1, 0, 0);
+  setTimeout(forceFreshReload, next.getTime() - now.getTime());
+}
+scheduleMidnightReload();
+
+// Also poll for new deploys throughout the day (via the page's own
+// Last-Modified header) so the TV never needs a manual cache-busted URL
+// again after future updates — this is a real, no-cache network check.
+let _knownLastModified = null;
+async function checkForNewDeploy() {
+  try {
+    const res = await fetch(window.location.pathname, { cache: 'no-store' });
+    const lm = res.headers.get('last-modified');
+    if (!lm) return;
+    if (_knownLastModified === null) { _knownLastModified = lm; return; } // first check just sets baseline
+    if (lm !== _knownLastModified) forceFreshReload();
+  } catch(e) { /* network hiccup — try again next interval */ }
+}
+checkForNewDeploy();
+setInterval(checkForNewDeploy, 5*60*1000);
 </script>
 <div id="debug-panel" style="display:none;position:fixed;bottom:10px;right:10px;z-index:1000;background:rgba(22,27,34,0.95);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:12px;font-family:monospace;color:var(--text);max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
   <div style="font-weight:700;margin-bottom:8px;color:var(--teal);border-bottom:1px solid var(--border);padding-bottom:6px;">🔍 Diagnostics</div>
