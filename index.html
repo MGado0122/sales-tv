@@ -924,7 +924,7 @@ const PORTRAITS = {
   'Mahmoud':'mahmoud.png','Hazem':'hazem.png','Hazzem':'hazem.png','Loza':'loza.png','Yasmine':'loza.png','Nancy':'nancy.png',
   'Walaa':'walaa.png','Asser':'asser.png','Omar':'omar.png','Engy':'engy.png',
   'Sawsan':'sawsan.png','Gendia':'gendia.png','Esraa':'esraa.png',
-  'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png',
+  'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png','Vivian':'vivian.png',
 };
 const TEAM_BADGES = {1:'whale.png',2:'lion.png',3:'tiger.png'};
 const TEAM_COLORS = {1:'var(--whale)',2:'var(--lion)',3:'var(--tiger)',4:'var(--ali)',5:'var(--meram)',6:'var(--sayeda)'};
@@ -933,7 +933,7 @@ function badgeUrl(teamIdx){ return TEAM_BADGES[teamIdx]? `${IMG_BASE}/badges/${T
    // <-- paste your Google Apps Script Web App URL here
 let entries = [];
 let soundEnabled = true;
-const SND={whale:'Whale.mp3',lion:'Lion.mp3',tiger:'Tiger.mp3',car:'Car.mp3',cat:'Cat.mp3',cash:'Cash.mp3',confirmed:'Confimred.mp3',mega:'Mega.mp3',opportunity:'Opportunity.mp3',rfq:'New RFQ.mp3',cancel:'Cancel.mp3'};
+const SND={whale:'Whale.mp3',lion:'Lion.mp3',tiger:'Tiger.mp3',car:'Car.mp3',cat:'Cat.mp3',cash:'Cash.mp3',confirmed:'Confimred.mp3',mega:'Mega.mp3',opportunity:'Opportunity.mp3',rfq:'New RFQ.mp3',cancel:'Cancel.mp3',vivian:'Vivian.mp3'};
 const _pool={};
 function preloadAudio(){for(const k in SND){try{const a=new Audio(encodeURI(SND[k]));a.preload='auto';a.load();_pool[k]=a;}catch(e){}}}
 let _auUnlocked=false;
@@ -2122,7 +2122,7 @@ function celebrate(entry){
   const tname = names[parseInt(effTeam(entry))-1] || names[parseInt(entry.team)-1] || '';
   try{ unlockAudio(); }catch(e){}
   try{ showNewDealOverlay(entry, tname); }catch(e){}
-  const tk = teamKey(tname, entry);
+  const tk = /vivian/i.test(entry.salesperson||'') ? 'vivian' : teamKey(tname, entry);
   switch (entry.status) {
     case 'rfq': playAudio('rfq'); break;
     case 'opportunity': playAudio('opportunity'); break;
