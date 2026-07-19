@@ -27,6 +27,7 @@
     --ali: #000000;
     --meram: #e056a8;
     --sayeda: #f5b301;
+    --vivian: #ff5fa2;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
@@ -114,6 +115,7 @@
   .bar-t4 { background: var(--ali); border: 1px solid #555; }
   .bar-t5 { background: var(--meram); }
   .bar-t6 { background: var(--sayeda); }
+  .bar-t7 { background: var(--vivian); }
   .bar-count { font-size: 11px; color: var(--text); font-weight: 600; margin-top: 3px; }
 
   /* ── KPI CARDS ── */
@@ -206,6 +208,7 @@
   .t4 { background: rgba(0,0,0,0.5); color: #d0d0d0; border: 1px solid rgba(255,255,255,0.3); }
   .t5 { background: rgba(224,86,168,0.15); color: #e056a8; border: 1px solid rgba(224,86,168,0.3); }
   .t6 { background: rgba(245,179,1,0.15); color: #f5b301; border: 1px solid rgba(245,179,1,0.3); }
+  .t7 { background: rgba(255,95,162,0.15); color: #ff5fa2; border: 1px solid rgba(255,95,162,0.3); }
   .overseas-banner { display:flex; align-items:center; gap:20px; background:linear-gradient(135deg,#0a2226,#0d2d33); border:1px solid #1f6f78; border-radius:12px; padding:16px 22px; margin-bottom:18px; }
   .overseas-banner .ov-head { display:flex; align-items:center; gap:14px; }
   .ov-globe { font-size:38px; }
@@ -762,6 +765,11 @@
           <div class="bar-wrap"><div class="bar-fill bar-t6" id="bar-t6" style="height:0%"></div></div>
           <div class="bar-count" id="bar-t6-count">0</div>
         </div>
+        <div class="team-bar-item">
+          <div class="bar-label" id="t7-label">Vivian</div>
+          <div class="bar-wrap"><div class="bar-fill bar-t7" id="bar-t7" style="height:0%"></div></div>
+          <div class="bar-count" id="bar-t7-count">0</div>
+        </div>
       </div>
     </div>
 
@@ -927,7 +935,7 @@ const PORTRAITS = {
   'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png','Vivian':'vivian.png',
 };
 const TEAM_BADGES = {1:'whale.png',2:'lion.png',3:'tiger.png'};
-const TEAM_COLORS = {1:'var(--whale)',2:'var(--lion)',3:'var(--tiger)',4:'var(--ali)',5:'var(--meram)',6:'var(--sayeda)'};
+const TEAM_COLORS = {1:'var(--whale)',2:'var(--lion)',3:'var(--tiger)',4:'var(--ali)',5:'var(--meram)',6:'var(--sayeda)',7:'var(--vivian)'};
 function portraitUrl(name){ const key=Object.keys(PORTRAITS).find(k=>k.toLowerCase()===(name||'').trim().toLowerCase()); return key? `${IMG_BASE}/portraits/${PORTRAITS[key]}` : null; }
 function badgeUrl(teamIdx){ return TEAM_BADGES[teamIdx]? `${IMG_BASE}/badges/${TEAM_BADGES[teamIdx]}` : null; }
    // <-- paste your Google Apps Script Web App URL here
@@ -940,7 +948,7 @@ let _auUnlocked=false;
 function unlockAudio(){if(_auUnlocked)return;_auUnlocked=true;for(const k in _pool){const a=_pool[k];a.muted=true;a.play().then(()=>{a.pause();a.currentTime=0;a.muted=false;}).catch(()=>{a.muted=false;});}}
 function playAudio(key){if(!soundEnabled)return;const s=SND[key];if(!s)return;const a=new Audio(encodeURI(s));a.volume=1;a.play().catch(()=>{});}
 function playThen(k1,k2){if(!soundEnabled)return;let a;try{a=new Audio(encodeURI(SND[k1]));}catch(e){return playAudio(k2);}a.volume=1;a.addEventListener('ended',()=>playAudio(k2),{once:true});a.play().catch(()=>playAudio(k2));}
-function teamKey(tname,entry){if(isOverseas(entry.salesperson))return 'tiger';const k=(tname||'').toLowerCase();if(k.includes('lion'))return 'lion';if(k.includes('tiger'))return 'tiger';if(k.includes('ali'))return 'car';if(k.includes('meram'))return 'cat';if(k.includes('sayeda'))return 'cash';return 'whale';}
+function teamKey(tname,entry){if(isOverseas(entry.salesperson))return 'tiger';const k=(tname||'').toLowerCase();if(k.includes('lion'))return 'lion';if(k.includes('tiger'))return 'tiger';if(k.includes('ali'))return 'car';if(k.includes('meram'))return 'cat';if(k.includes('sayeda'))return 'cash';if(k.includes('vivian'))return 'vivian';return 'whale';}
 preloadAudio();
 ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));
 const OVERSEAS_PEOPLE = ['Gendia','Esraa Khaled'];
@@ -1561,7 +1569,7 @@ function timeAgo(iso) {
   return Math.floor(h/24)+'d ago';
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function getTeamNames() { return ['Whale','Lion','Tiger','Ali','Meram','Sayeda']; }
+function getTeamNames() { return ['Whale','Lion','Tiger','Ali','Meram','Sayeda','Vivian']; }
 
 // ─── TIME RANGE TOGGLE ───────────────────────────────────
 let timeRange = 'today'; // 'today' | 'week' | 'month'
@@ -1796,7 +1804,7 @@ function renderAll() {
     document.getElementById('ov-opp').textContent       = ovToday.filter(e=>e.status==='opportunity').length;
     document.getElementById('ov-cancelled').textContent = ovToday.filter(e=>e.status==='cancelled').length;
     window._renderStep = 'after-overseas';
-    const tScores = [1,2,3,4,5,6].map(t=>({
+    const tScores = [1,2,3,4,5,6,7].map(t=>({
       t,
       count: winToday.filter(e=>effTeam(e)==t).length,
       rev: winToday.filter(e=>effTeam(e)==t).reduce((s,e)=>s+e.value,0)
@@ -1917,7 +1925,7 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 // ─── SUMMARY ─────────────────────────────────────────────
-const ANIMAL_MAP = { whale:'🐋', lion:'🦁', tiger:'🐯', ali:'🏎️', meram:'🐱', sayeda:'💰' };
+const ANIMAL_MAP = { whale:'🐋', lion:'🦁', tiger:'🐯', ali:'🏎️', meram:'🐱', sayeda:'💰', vivian:'🌸' };
 const TEAM_BG_MAP = { whale:'team-whale-bg', lion:'team-lion-bg', tiger:'team-tiger-bg', ali:'team-ali-bg', meram:'team-meram-bg', sayeda:'team-sayeda-bg' };
 
 function openSummary(){
@@ -1943,7 +1951,7 @@ function openSummary(){
   }
 
   // Winning team (today, overseas rolls into Tiger)
-  const tScores = [1,2,3,4,5,6].map(t=>({ t, name:names[t-1], count: winToday.filter(e=>effTeam(e)==t).length }));
+  const tScores = [1,2,3,4,5,6,7].map(t=>({ t, name:names[t-1], count: winToday.filter(e=>effTeam(e)==t).length }));
   const top = tScores.reduce((a,b)=>b.count>a.count?b:a);
   const teamSection = document.getElementById('sum-team-section');
   teamSection.className = 'summary-team-section';
@@ -2012,7 +2020,7 @@ function normStatus(s){
   if (s.indexOf('confirm') > -1 || s.indexOf('shipment') > -1) return 'confirmed';
   return s;
 }
-const TEAM_NUM = { whale:'1', lion:'2', tiger:'3', ali:'4', meram:'5', sayeda:'6' };
+const TEAM_NUM = { whale:'1', lion:'2', tiger:'3', ali:'4', meram:'5', sayeda:'6', vivian:'7' };
 function parseRow(r){
   const raw = String(r['Date']||'').trim();
   let d;
