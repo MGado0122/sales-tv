@@ -934,7 +934,7 @@ const PORTRAITS = {
   'Sawsan':'sawsan.png','Gendia':'gendia.png','Esraa':'esraa.png',
   'Ali':'ali.png','Meram':'meram.png','Sayeda':'sayeda.png','Vivian':'vivian.png',
 };
-const TEAM_BADGES = {1:'whale.png',2:'lion.png',3:'tiger.png'};
+const TEAM_BADGES = {1:'whale.png',2:'lion.png',3:'tiger.png',7:'vivian.png'};
 const TEAM_COLORS = {1:'var(--whale)',2:'var(--lion)',3:'var(--tiger)',4:'var(--ali)',5:'var(--meram)',6:'var(--sayeda)',7:'var(--vivian)'};
 function portraitUrl(name){ const key=Object.keys(PORTRAITS).find(k=>k.toLowerCase()===(name||'').trim().toLowerCase()); return key? `${IMG_BASE}/portraits/${PORTRAITS[key]}` : null; }
 function badgeUrl(teamIdx){ return TEAM_BADGES[teamIdx]? `${IMG_BASE}/badges/${TEAM_BADGES[teamIdx]}` : null; }
